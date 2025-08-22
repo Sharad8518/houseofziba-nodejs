@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+// Cart Item Schema
 const cartItemSchema = new Schema(
   {
     product: {
@@ -9,12 +10,16 @@ const cartItemSchema = new Schema(
       required: true,
     },
     variant: {
-      sku: { type: String, required: true },  // To identify which variant
-      color: { type: String, trim: true },
-      size: { type: String, trim: true },
+      sku: { type: String, required: true },  // Unique identifier for the variant
+      attributes: [
+        {
+          name: { type: String, trim: true },
+          value: { type: String, trim: true },
+        },
+      ],
       price: { type: Number, required: true },
-      mrp: { type: Number, required: true },
-      discount: { type: Number, default: 0 }, // (optional) % discount for variant
+      mrp: { type: Number, },
+      discount: { type: Number, default: 0 }, // % discount
     },
     quantity: {
       type: Number,
@@ -30,6 +35,7 @@ const cartItemSchema = new Schema(
   { timestamps: true }
 );
 
+// Cart Schema
 const cartSchema = new Schema(
   {
     user: {
@@ -50,7 +56,7 @@ const cartSchema = new Schema(
   { timestamps: true }
 );
 
-/* Auto-calc totals before save */
+// Auto-calculate totals before saving
 cartSchema.pre("save", function (next) {
   let totalItems = 0;
   let totalPrice = 0;

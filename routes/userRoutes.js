@@ -44,8 +44,16 @@ const {
   decreaseQty,
   removeFromCart,
   clearCart,
+  getCart
 } = require("../controllers/cartControllers.js")
 
+const {placeOrder,
+  updateOrderStatus,
+  createRazorpayOrder,
+  verifyRazorpayPayment
+
+
+} =require("../controllers/orderController.js")
 const express = require('express'); 
 const verifyJWT = require("../middlewares/verifyJWT");
 const router = express.Router();
@@ -58,12 +66,15 @@ router.get("/products", getProducts);
 router.get("/products/:id", getProductById);
 router.use(verifyJWT("CUSTOMER"));
 router.post("/completeProfile", completeProfile);
-router.post("/Profile", getProfile);
-router.post("/add", addToCart);
-router.post("/increase", increaseQty);
-router.post("/decrease", decreaseQty);
-router.post("/remove",  removeFromCart);
-router.post("/clear", clearCart);
-
+router.get("/profile", getProfile);
+router.post("/cart/add", addToCart);
+router.post("/cart/increase", increaseQty);
+router.post("/cart/decrease", decreaseQty);
+router.post("/cart/remove",  removeFromCart);
+router.post("/cart/clear", clearCart);
+router.get("/cart", getCart);                
+router.post("/order/place", placeOrder); 
+router.post("/create-order", createRazorpayOrder); 
+router.post("/order/verify", verifyRazorpayPayment); 
 
 module.exports = router;

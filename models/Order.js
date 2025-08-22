@@ -8,13 +8,17 @@ const orderItemSchema = new Schema(
       ref: "Product",
       required: true,
     },
-    variant: {
-      sku: { type: String, required: true },
-      color: { type: String, trim: true },
-      size: { type: String, trim: true },
+   variant: {
+      sku: { type: String, required: true },  // Unique identifier for the variant
+      attributes: [
+        {
+          name: { type: String, trim: true },
+          value: { type: String, trim: true },
+        },
+      ],
       price: { type: Number, required: true },
-      mrp: { type: Number, required: true },
-      discount: { type: Number, default: 0 },
+      mrp: { type: Number, },
+      discount: { type: Number, default: 0 }, // % discount
     },
     quantity: { type: Number, required: true, min: 1 },
     subtotal: { type: Number, required: true },
