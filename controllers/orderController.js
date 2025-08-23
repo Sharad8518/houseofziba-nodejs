@@ -1,7 +1,6 @@
-
-const Order = require("../models/Order")
-const Product = require("../models/Product")
-const Cart = require("../models/Cart")
+const Order = require("../models/Order");
+const Product = require("../models/Product");
+const Cart = require("../models/Cart");
 const bodyParser = require("body-parser");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
@@ -9,25 +8,29 @@ const crypto = require("crypto");
 const placeOrder = async (req, res) => {
   try {
     const userId = req.ID;
-    const { 
-      buyNow,            // true if single product checkout
-      productId,         // only for buy now
-      variant,           // { sku, color, size, price, mrp, discount }
-      quantity,          // only for buy now
+    const {
+      buyNow, // true if single product checkout
+      productId, // only for buy now
+      variant, // { sku, color, size, price, mrp, discount }
+      quantity, // only for buy now
       shippingAddress,
-      paymentMethod 
+      paymentMethod,
     } = req.body;
 
     let items = [];
-    let totalItems = 0, totalMrp = 0, totalDiscount = 0, totalAmount = 0;
+    let totalItems = 0,
+      totalMrp = 0,
+      totalDiscount = 0,
+      totalAmount = 0;
 
     if (buyNow) {
       // 🛒 Case 1: Direct Buy Now
       const product = await Product.findById(productId);
-      if (!product) return res.status(404).json({ message: "Product not found" });
+      if (!product)
+        return res.status(404).json({ message: "Product not found" });
       const price = Number(variant?.price) || 0;
-       const mrp = Number(variant?.mrp) || price; // fallback to price if missing
-       const qty = Number(quantity) || 1;
+      const mrp = Number(variant?.mrp) || price; // fallback to price if missing
+      const qty = Number(quantity) || 1;
       const subtotal = price * qty;
       totalItems = qty;
       totalMrp = mrp * qty;
@@ -40,15 +43,16 @@ const placeOrder = async (req, res) => {
         quantity,
         subtotal,
       });
-
     } else {
       // 🛒 Case 2: Checkout from Cart
-      const cart = await Cart.findOne({ user: userId }).populate("items.product");
+      const cart = await Cart.findOne({ user: userId }).populate(
+        "items.product"
+      );
       if (!cart || cart.items.length === 0) {
         return res.status(400).json({ message: "Cart is empty" });
       }
 
-      items = cart.items.map(item => ({
+      items = cart.items.map((item) => ({
         product: item.product._id,
         variant: item.variant,
         quantity: item.quantity,
@@ -140,16 +144,21 @@ const createRazorpayOrder = async (req, res) => {
 const verifyRazorpayPayment = async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-    const generatedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest('hex');
+      .digest("hex");
 
     if (generatedSignature !== razorpaySignature) {
-      return res.status(400).json({ success: false, message: "Invalid signature" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid signature" });
     }
 
     // Payment is valid, update order status
-    const order = await Order.findOne({ "payment.transactionId": razorpayOrderId });
+    const order = await Order.findOne({
+      "payment.transactionId": razorpayOrderId,
+    });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     order.payment.status = "paid";
@@ -160,13 +169,86 @@ const verifyRazorpayPayment = async (req, res) => {
   } catch (error) {
     console.error("Razorpay Payment Verification Error:", error);
     res.status(500).json({ success: false, message: "Server error" });
-  } 
-}
+  }
+};
+
+const getUserOrder = async (req, res) => {
+  try {
+    const userId = req.ID;
+
+    // Get pagination params from query (default page=1, limit=10)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Count total orders
+    const totalOrders = await Order.countDocuments({ user: userId });
+
+    // Fetch paginated orders
+    const orders = await Order.find({ user: userId })
+      .sort({ createdAt: -1 }) // latest first
+      .skip(skip)
+      .limit(limit)
+      .populate("items.product", "title media salePrice") 
+      .populate("user", "name email phone");
+
+    res.json({
+      success: true,
+      totalOrders,
+      page,
+      limit,
+      totalPages: Math.ceil(totalOrders / limit),
+      orders,
+    });
+  } catch (error) {
+    console.error("Get Orders by User Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+      error: error.message,
+    });
+  }
+};
+
+const getAllOrder = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalOrders = await Order.countDocuments();
+
+    const orders = await Order.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("items.product", "title media salePrice")
+      .populate("user", "name email phone");
+
+    res.json({
+      success: true,
+      totalOrders,
+      page,
+      limit,
+      totalPages: Math.ceil(totalOrders / limit), // corrected
+      orders
+    });
+  } catch (error) {
+    console.error("Get Orders Error", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+      error: error.message
+    });
+  }
+};
 
 
 module.exports = {
   placeOrder,
- updateOrderStatus,
- createRazorpayOrder,
- verifyRazorpayPayment
+  updateOrderStatus,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  getUserOrder,
+  getAllOrder
 };

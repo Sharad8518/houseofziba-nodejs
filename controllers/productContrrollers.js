@@ -108,9 +108,15 @@ const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await Product.findById(id)
-      .populate("similarProducts")
-      .populate("frequentlyBoughtTogether");
+     const product = await Product.findById(id)
+      .populate({
+        path: "similarProducts",
+        select: "title description media salePrice mrp status", // select fields you need
+      })
+      .populate({
+        path: "frequentlyBoughtTogether",
+        select: "title description images price status",
+      });
 
     if (!product) {
       return res.status(404).json({
@@ -149,8 +155,137 @@ if (product.inventoryBySize) {
   }
 };
 
+const addfbtoProduct = async (req, res) => {
+  try {
+    const { productId, fbtIds } = req.body; // fbtIds = array
+
+    if (!productId || !Array.isArray(fbtIds)) {
+      return res.status(400).json({
+        success: false,
+        message: "productId and fbtIds[] are required",
+      });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Merge unique IDs
+    const existing = product.frequentlyBoughtTogether.map((id) => id.toString());
+    const toAdd = fbtIds.filter((id) => !existing.includes(id));
+
+    if (toAdd.length > 0) {
+      product.frequentlyBoughtTogether.push(...toAdd);
+      await product.save();
+    }
+
+    res.json({
+      success: true,
+      message: "FBT items added successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Add FBT to Product Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add FBT items",
+      error: error.message,
+    });
+  }
+};
+
+const removefbtFromProduct = async (req, res) => {
+  try {
+    const { productId, fbtId } = req.body;
+
+    if (!productId || !fbtId) {
+      return res.status(400).json({
+        success: false,
+        message: "Both productId and fbtId are required",
+      });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Remove the FBT item if it exists
+    product.frequentlyBoughtTogether = product.frequentlyBoughtTogether.filter(
+      (id) => id.toString() !== fbtId
+    );
+    await product.save();
+
+    res.json({
+      success: true,
+      message: "FBT item removed from product successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Remove FBT from Product Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to remove FBT item from product",
+      error: error.message,
+    });
+  }
+};
+
+const addSimilarProduct = async (req, res) => {
+  try {
+    const { productId, similarProductIds } = req.body;
+
+    if (!productId || !similarProductIds || !Array.isArray(similarProductIds) || similarProductIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "productId and similarProductIds[] are required",
+      });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Add new similar products, avoiding duplicates
+    similarProductIds.forEach((id) => {
+      if (!product.similarProducts.includes(id)) {
+        product.similarProducts.push(id);
+      }
+    });
+
+    await product.save();
+
+    res.json({
+      success: true,
+      message: "Similar products added successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Add Similar Product Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add similar products",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   addProduct,
   getProducts,
   getProductById,
+  addfbtoProduct,
+  removefbtFromProduct,
+  addSimilarProduct
 };

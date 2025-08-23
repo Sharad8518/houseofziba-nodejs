@@ -4,7 +4,7 @@ const Product = require("../models/Product");
 // ✅ Add to favorites
 const addFavorite = async (req, res) => {
   try {
-    const userId = req.user.ID; // Assuming user is logged in via JWT middleware
+    const userId = req.ID; // Assuming user is logged in via JWT middleware
     const { productId } = req.body;
 
     // Check if product exists
@@ -30,7 +30,7 @@ const addFavorite = async (req, res) => {
 // ✅ Remove from favorites
 const removeFavorite = async (req, res) => {
   try {
-    const userId = req.user.ID;
+    const userId = req.ID;
     const { productId } = req.params;
 
     await Favorite.findOneAndDelete({ user: userId, product: productId });
@@ -45,7 +45,7 @@ const removeFavorite = async (req, res) => {
 // ✅ Get all user favorites
 const getFavorites = async (req, res) => {
   try {
-    const userId = req.user.ID;
+    const userId = req.ID;
 
     const favorites = await Favorite.find({ user: userId }).populate("product");
 

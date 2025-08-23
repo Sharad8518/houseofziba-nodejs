@@ -50,10 +50,14 @@ const {
 const {placeOrder,
   updateOrderStatus,
   createRazorpayOrder,
-  verifyRazorpayPayment
-
-
+  verifyRazorpayPayment,
+  getUserOrder
 } =require("../controllers/orderController.js")
+
+const{addFavorite,
+removeFavorite,
+getFavorites} = require("../controllers/favoritesControllers.js")
+
 const express = require('express'); 
 const verifyJWT = require("../middlewares/verifyJWT");
 const router = express.Router();
@@ -75,6 +79,10 @@ router.post("/cart/clear", clearCart);
 router.get("/cart", getCart);                
 router.post("/order/place", placeOrder); 
 router.post("/create-order", createRazorpayOrder); 
-router.post("/order/verify", verifyRazorpayPayment); 
+router.post("/order/verify", verifyRazorpayPayment);
+router.post("/favorites",addFavorite) 
+router.get("/favorites",getFavorites) 
+router.delete("/favorites/:id",removeFavorite) 
+router.get("/order",getUserOrder) 
 
 module.exports = router;

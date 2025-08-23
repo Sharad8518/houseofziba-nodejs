@@ -142,7 +142,7 @@ const ProductSchema = new mongoose.Schema(
 
     // Cross-sell
     frequentlyBoughtTogether: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+      { type: mongoose.Schema.Types.ObjectId, ref: "FrequentlyBoughtTogether" },
     ], // "Pair It..."
     similarProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }], // "Similar Products"
 
