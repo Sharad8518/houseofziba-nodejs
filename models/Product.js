@@ -1,11 +1,13 @@
 // models/Product.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-const MediaSchema = new mongoose.Schema(
+// --- Media
+const MediaSchema = new Schema(
   {
     url: { type: String, required: true, trim: true },
     alt: { type: String, trim: true },
-    kind: { type: String, enum: ['image', 'video', 'other'], default: 'image' },
+    kind: { type: String, enum: ["image", "video", "other"], default: "image" },
     width: Number,
     height: Number,
     bytes: Number,
@@ -13,30 +15,25 @@ const MediaSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const VariantSchema = new mongoose.Schema(
+// --- Variants
+const VariantSchema = new Schema(
   {
-    attributes: [
-      {
-        name: { type: String, required: true, trim: true },  // e.g. "Size", "Color"
-        value: { type: String, required: true, trim: true }, // e.g. "L", "Red"
-      },
-    ],
-    sku: { type: String, trim: true, index: true },
-    additionalPrice: { type: Number, min: 0, default: 0 },
-    stock: { type: Number, default: 0, min: 0 },
-    reservedStock: { type: Number, default: 0, min: 0 },
+    sku: { type: String, unique: true }, // auto-generated
+    size: { type: String, required: true },
+    paddingRequired: { type: String, enum: ["Yes", "No"], default: "No" },
+    waist: { type: String },
+    length: { type: String },
+    height: { type: String },
+    stock: { type: Number, default: 0 },
+    lowStockAlertQty: { type: Number, default: 5 },
   },
-  { _id: false, timestamps: true }
+  { _id: false }
 );
 
-VariantSchema.virtual("finalPrice").get(function () {
-  const base = this.parent().mrp || 0;
-  return base + (this.additionalPrice || 0);
-});
-
-const ReviewSchema = new mongoose.Schema(
+// --- Reviews
+const ReviewSchema = new Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
     name: String,
     rating: { type: Number, min: 1, max: 5, required: true },
     title: String,
@@ -46,7 +43,8 @@ const ReviewSchema = new mongoose.Schema(
   { _id: true }
 );
 
-const FAQSchema = new mongoose.Schema(
+// --- FAQ
+const FAQSchema = new Schema(
   {
     question: { type: String, required: true },
     answer: { type: String, required: true },
@@ -54,20 +52,8 @@ const FAQSchema = new mongoose.Schema(
   { _id: true }
 );
 
-const ProductDetailSchema = new mongoose.Schema(
-  {
-    styleNo: { type: String, trim: true },          // Style No
-    colour: { type: String, trim: true },           // Colour
-    fabric: { type: String, trim: true },           // Fabric
-    work: { type: String, trim: true },             // Work
-    packContains: { type: String, trim: true },     // Pack Contains
-    care: { type: String, trim: true },             // Care
-    note: { type: String, trim: true },             // Note
-  },
-  { _id: false }
-);
-
-const SEOListingSchema = new mongoose.Schema(
+// --- SEO
+const SEOListingSchema = new Schema(
   {
     title: { type: String, trim: true },
     description: { type: String, trim: true },
@@ -81,142 +67,116 @@ const SEOListingSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const ProductSchema = new mongoose.Schema(
+// --- Product
+const ProductSchema = new Schema(
   {
-    header: { type: mongoose.Schema.Types.ObjectId, ref: "Header" },
-    category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
-    subCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" },
-    collection: { type: mongoose.Schema.Types.ObjectId, ref: "Collection" },
+    header: { type: String },
+    categories: [{ type: String }],
+    subCategories: [{ type: String }],
+    collections: [{ type: String }],
 
-    brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
-    // Core
-    itemNumber: { type: String, required: true, trim: true, unique: true }, // "Item Number"
-    title: { type: String, required: true, trim: true }, // "Title"
-    description: { type: String, trim: true }, // "Description"
+    itemNumber: { type: String, required: true, trim: true, unique: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
 
-    media: [MediaSchema], // "Media"
+    media: [MediaSchema],
+    variants: [VariantSchema],
 
-    // Sizes & Inventory
-    variants: [VariantSchema], // "Size (Variant)"
-    inventoryBySize: {
-      // "Size (Inventory)"
-      type: Map,
-      of: { type: Number, min: 0 },
-      default: undefined,
-    },
-
-    // Pricing
-    costPrice: { type: Number, min: 0 }, // from "Cost -Margin"
-    marginPercent: { type: Number, min: 0, max: 100 }, // from "Cost -Margin"
-    mrp: { type: Number, min: 0, required: true }, // "Rate of ITEM (MRP)"
-    salePrice: { type: Number, min: 0 }, // "Offer or Sales Price"
-
-    onSale: { type: Boolean, default: false },
-    discountType: {
-      type: String,
-      enum: ["percent", "flat"],
-      default: "percent",
-    },
+    costPrice: { type: Number, min: 0 },
+    marginPercent: { type: Number, min: 0, max: 100 },
+    mrp: { type: Number, min: 0, required: true },
+    salePrice: { type: Number, min: 0 },
+    discountType: { type: String, enum: ["percent", "flat"], default: "percent" },
     discountValue: { type: Number, default: 0, min: 0 },
     saleStart: { type: Date },
     saleEnd: { type: Date },
 
-    colour: { type: String, trim: true }, // "Colour"
+    colour: { type: String, trim: true },
 
     fulfillmentType: {
-      // "Made to Order | Ready to Ship Select One"
       type: String,
       enum: ["MADE_TO_ORDER", "READY_TO_SHIP"],
       required: true,
     },
-    estimatedShippingDate: { type: Date }, // "Estimated Shiping Date"
+    estimatedShippingDate: { type: Date },
 
-    // Rich product details
-    productDetail: ProductDetailSchema, // Product Detail(...)
-    productSpeciality: [{ type: String, trim: true }], // "Product Speciality"
-    shippingAndReturns: { type: String, trim: true }, // "Shipping and Returns"
+    productDetail: { type: String },
+    styleNo: { type: String },
+    fabric: { type: String },
+    work: { type: String },
+    packContains: { type: String },
+    care: { type: String },
+    note: { type: String },
 
-    // Social proof
-    reviews: [ReviewSchema], // "Review"
+    productSpeciality: { type: String },
+    shippingAndReturns: { type: String, trim: true },
+
+    reviews: [ReviewSchema],
     averageRating: { type: Number, min: 0, max: 5, default: 0 },
 
-    // Cross-sell
-    frequentlyBoughtTogether: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "FrequentlyBoughtTogether" },
-    ], // "Pair It..."
-    similarProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }], // "Similar Products"
+    frequentlyBoughtTogether: [{ type: Schema.Types.ObjectId, ref: "Product" }],
+    similarProducts: [{ type: Schema.Types.ObjectId, ref: "Product" }],
 
-    // SEO
-    seo: SEOListingSchema, // "Search engine listing"
+    seo: SEOListingSchema,
+    faq: [FAQSchema],
 
-    // FAQ
-    faq: [FAQSchema], // "FAQ"
-
-    // Operational
-    status: {
-      type: String,
-      enum: ["DRAFT", "ACTIVE", "ARCHIVED"],
-      default: "DRAFT",
-    },
+    status: { type: String, enum: ["DRAFT", "ACTIVE", "ARCHIVED"], default: "DRAFT" },
     tags: [{ type: String, trim: true }],
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
-// --- Derived / hooks ---
-ProductSchema.pre('save', async function (next) {
-  // Keep averageRating in sync
-  if (this.isModified('reviews')) {
-    const ratings = (this.reviews || []).map(r => r.rating);
+// --- Hooks
+ProductSchema.pre("save", async function (next) {
+  // --- Average Rating
+  if (this.isModified("reviews")) {
+    const ratings = (this.reviews || []).map((r) => r.rating);
     this.averageRating = ratings.length
-      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) /
+        10
       : 0;
   }
 
-  // Validate pricing logic
+  // --- Pricing Validation
   if (this.salePrice != null && this.mrp != null && this.salePrice > this.mrp) {
-    return next(new Error('salePrice cannot exceed mrp'));
+    return next(new Error("salePrice cannot exceed mrp"));
   }
 
-  // --- ✅ Auto-generate slug ---
-  if (this.isModified('title') && (!this.seo || !this.seo.slug)) {
+  // --- Slug Generation
+  if (this.isModified("title") && (!this.seo || !this.seo.slug)) {
     let baseSlug = this.title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     let slug = baseSlug;
     let counter = 1;
 
-    const Product = mongoose.model('Product');
-    while (await Product.findOne({ 'seo.slug': slug, _id: { $ne: this._id } })) {
+    const Product = mongoose.model("Product");
+    while (
+      await Product.findOne({ "seo.slug": slug, _id: { $ne: this._id } })
+    ) {
       slug = `${baseSlug}-${counter++}`;
     }
     this.seo = { ...(this.seo || {}), slug };
   }
 
+  // --- SKU Generation for Variants
+  if (this.variants && this.title) {
+    this.variants = this.variants.map((variant) => {
+      if (!variant.sku) {
+        const productPart = this.title
+          .replace(/\s+/g, "")
+          .toUpperCase()
+          .slice(0, 6); // First 6 chars of product
+        const sizePart = variant.size ? variant.size.toUpperCase() : "NA";
+        const randomPart = Math.floor(1000 + Math.random() * 9000); // 4-digit random
+        variant.sku = `${productPart}-${sizePart}-${randomPart}`;
+      }
+      return variant;
+    });
+  }
+
   next();
 });
 
-// Text index for search across key fields
-ProductSchema.index({
-  title: 'text',
-  description: 'text',
-  colour: 'text',
-  'productDetail.styleNo': 'text',
-  'productDetail.fabric': 'text',
-  'productDetail.work': 'text',
-});
-
-// Handy virtual: inStock
-ProductSchema.virtual('inStock').get(function () {
-  const bySize = this.inventoryBySize ? Array.from(this.inventoryBySize.values()) : [];
-  const fromVariants = (this.variants || []).map(v => v.stock || 0);
-  const total = [...bySize, ...fromVariants].reduce((a, b) => a + b, 0);
-  return total > 0;
-});
-
-module.exports = mongoose.model('Product', ProductSchema);
+module.exports = mongoose.model("Product", ProductSchema);

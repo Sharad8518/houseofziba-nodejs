@@ -1,11 +1,16 @@
 const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
+const twilio = require("twilio")
 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_ACCOUNT_TOKEN
+);
 
-const sentOTP = async (req, res) => {
+ const sentOTP = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -29,8 +34,12 @@ const sentOTP = async (req, res) => {
     // Save OTP & expiry to DB
     await user.setOtp(otpCode);
 
-    // Send OTP (replace with actual SMS service)
-    console.log(`OTP for ${phone} is ${otpCode}`);
+    // Send OTP via Twilio
+    await twilioClient.messages.create({
+      body: `Your OTP code is ${otpCode}`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: `+91${phone}`, // prepend country code (e.g., +91 for India)
+    });
 
     return res.status(200).json({ message: "OTP sent successfully" });
   } catch (error) {
@@ -38,6 +47,7 @@ const sentOTP = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 const verifyOTP = async(req,res)=>{
   try {

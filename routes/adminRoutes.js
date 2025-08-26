@@ -60,6 +60,26 @@ const {
 
 const {getAllOrder} =require("../controllers/orderController.js")
 
+
+const {
+  addBanner,
+  getBanners,
+  getActiveBanners,
+  updateBanner,
+  deleteBanner,
+} = require("../controllers/bannerController");
+
+const {
+  createPromotional,
+  getPromotions,
+  getPromotionById,
+  updatePromotion,
+  deletePromotion,
+} = require("../controllers/promotionalController");
+
+
+
+
 const express = require("express");
 const verifyJWT = require("../middlewares/verifyJWT");
 const { upload } = require("../middlewares/file_handler");
@@ -104,5 +124,13 @@ router.post("/add-fbt", addfbtoProduct);        // Add FBT item
 router.delete("/remove-fbt", removefbtFromProduct)
 router.post("/add-similar", addSimilarProduct);
 router.get("/orders", getAllOrder);
-
+router.post("/banner", upload.single("image"), addBanner);
+router.get("/banner", getBanners);
+router.get("/banner/active", getActiveBanners);
+router.put("/banner/:id", upload.single("image"), updateBanner);
+router.delete("/banner/:id", deleteBanner);
+router.post("/Promotional", createPromotional);
+router.get("/promotional", getPromotions);
+router.put("/promotional/:id", updatePromotion);
+router.delete("/promotional/:id", deletePromotion);
 module.exports = router;

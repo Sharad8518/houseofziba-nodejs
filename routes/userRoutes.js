@@ -36,7 +36,7 @@ const {
   updateCollection,
   deleteCollection,
 } = require('../controllers/collectionController.js')
-const { getProducts, getProductById } = require("../controllers/productContrrollers");
+const { getProducts, getProductById,productfilter } = require("../controllers/productContrrollers");
 
 const {
    addToCart,
@@ -54,9 +54,19 @@ const {placeOrder,
   getUserOrder
 } =require("../controllers/orderController.js")
 
+const {getNavbarData,
+getHeaderBySlug} = require("../controllers/navbarControllers.js")
 const{addFavorite,
 removeFavorite,
 getFavorites} = require("../controllers/favoritesControllers.js")
+
+const {
+  addBanner,
+  getBanners,
+  getActiveBanners,
+  updateBanner,
+  deleteBanner,
+} = require("../controllers/bannerController");
 
 const express = require('express'); 
 const verifyJWT = require("../middlewares/verifyJWT");
@@ -67,7 +77,10 @@ router.post("/verifyOTP", verifyOTP);
 router.post("/googleLogin", loginWithGoogle);
 router.post("/facebookLogin", loginWithFacebook);
 router.get("/products", getProducts);
+router.get("/productsfilter", productfilter);
 router.get("/products/:id", getProductById);
+router.get("/navbar",getNavbarData)
+router.get("/banner",getActiveBanners)
 router.use(verifyJWT("CUSTOMER"));
 router.post("/completeProfile", completeProfile);
 router.get("/profile", getProfile);

@@ -50,6 +50,22 @@ const uploadFilesToS3 = async (files, folderName) => {
   );
 };
 
+const uploadFileToS3 = async (file, folderName) => {
+  const extension = file.originalname.split(".").pop();
+  const uniqueFileName = `${uniqid()}.${extension}`;
+  const params = {
+    Bucket: BUCKET_NAME,
+    Key: `${folderName}/${uniqueFileName}`,
+    Body: file.buffer,
+  };
+
+  try {
+    await s3.upload(params).promise();
+    return `https://${BUCKET_NAME}.s3.${BUCKET_REGION}.amazonaws.com/${folderName}/${uniqueFileName}`;
+  } catch (error) {
+    throw error;
+  }
+};
 
 
 // Utility function for deleting an image from S3
@@ -67,4 +83,4 @@ const deleteFileFromS3 = async (imageUrl) => {
   }
 };
 
-module.exports = { upload, uploadFilesToS3, deleteFileFromS3 };
+module.exports = { upload, uploadFilesToS3, deleteFileFromS3,uploadFileToS3 };

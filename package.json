@@ -23,6 +23,7 @@
     "mongoose": "^8.17.1",
     "multer": "^2.0.2",
     "razorpay": "^2.9.6",
+    "twilio": "^5.8.0",
     "uniqid": "^5.4.0"
   }
 }
