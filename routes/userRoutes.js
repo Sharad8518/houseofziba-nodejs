@@ -67,6 +67,13 @@ const {
   updateBanner,
   deleteBanner,
 } = require("../controllers/bannerController");
+const {
+  createPromotional,
+  getPromotions,
+  getPromotionById,
+  updatePromotion,
+  deletePromotion,
+} = require("../controllers/promotionalController");
 
 const express = require('express'); 
 const verifyJWT = require("../middlewares/verifyJWT");
@@ -81,6 +88,7 @@ router.get("/productsfilter", productfilter);
 router.get("/products/:id", getProductById);
 router.get("/navbar",getNavbarData)
 router.get("/banner",getActiveBanners)
+router.get("/promotional", getPromotions);
 router.use(verifyJWT("CUSTOMER"));
 router.post("/completeProfile", completeProfile);
 router.get("/profile", getProfile);

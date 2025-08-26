@@ -129,7 +129,7 @@ router.get("/banner", getBanners);
 router.get("/banner/active", getActiveBanners);
 router.put("/banner/:id", upload.single("image"), updateBanner);
 router.delete("/banner/:id", deleteBanner);
-router.post("/Promotional", createPromotional);
+router.post("/promotional", createPromotional);
 router.get("/promotional", getPromotions);
 router.put("/promotional/:id", updatePromotion);
 router.delete("/promotional/:id", deletePromotion);
