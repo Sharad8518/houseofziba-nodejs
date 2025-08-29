@@ -3,13 +3,22 @@ const Header  = require ("../models/Header.js");
 // Get all
 const getHeaders = async (req, res) => {
   try {
-    const headers = await Header.find();
+    const headers = await Header.find({ status: "Active" }); // only Active
     res.json(headers);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// Get all
+const getHeadersAllowCategory = async (req, res) => {
+  try {
+    const headers = await Header.find({ addCategory: "Yes" }); // only Active
+    res.json(headers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 // Get one
 const getHeader = async (req, res) => {
   try {
@@ -53,6 +62,7 @@ const deleteHeader = async (req, res) => {
 
 module.exports = {
     getHeaders,
+    getHeadersAllowCategory,
     getHeader,
     createHeader,
     updateHeader,

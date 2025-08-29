@@ -26,6 +26,7 @@ const {
   createHeader,
   updateHeader,
   deleteHeader,
+  getHeadersAllowCategory,
 } = require("../controllers/headerController.js");
 
 const {
@@ -58,7 +59,7 @@ const {
   deleteFBTItem,
 } = require("../controllers/frequentlyBoughtTogetherController.js");
 
-const {getAllOrder} =require("../controllers/orderController.js")
+const {getAllOrder,updateOrderStatus} =require("../controllers/orderController.js")
 
 
 const {
@@ -94,6 +95,7 @@ router.post("/products", upload.array("images", 6), addProduct);
 router.get("/products", getProducts);
 router.get("/products/:id", getProductById);
 router.get("/headers", getHeaders);
+router.get("/headers/category", getHeadersAllowCategory);
 router.get("/headers/:id", getHeader);
 router.post("/headers", createHeader);
 router.put("/headers/:id", updateHeader);
@@ -124,6 +126,7 @@ router.post("/add-fbt", addfbtoProduct);        // Add FBT item
 router.delete("/remove-fbt", removefbtFromProduct)
 router.post("/add-similar", addSimilarProduct);
 router.get("/orders", getAllOrder);
+router.put("/updateOrdersStatus", updateOrderStatus);
 router.post("/banner", upload.single("image"), addBanner);
 router.get("/banner", getBanners);
 router.get("/banner/active", getActiveBanners);

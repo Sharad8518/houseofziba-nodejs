@@ -32,7 +32,7 @@ const addProduct = async (req, res) => {
       }
     };
 
-    ["variants", "seo", "faq"].forEach(parseIfString);
+    ["variants", "seo", "faq","productionDetail", "dupatta"].forEach(parseIfString);
 
     // Ensure numeric values are parsed
     if (productData.discountValue) productData.discountValue = Number(productData.discountValue);

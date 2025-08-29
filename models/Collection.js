@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 
 const collectionSchema = new mongoose.Schema(
   {
-    subcategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory", required: true },
+    subcategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory", },
     name: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
+    image: { type: String,  },
     description: { type: String },
   },
   { timestamps: true }

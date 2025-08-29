@@ -20,10 +20,11 @@ const VariantSchema = new Schema(
   {
     sku: { type: String, unique: true }, // auto-generated
     size: { type: String, required: true },
-    paddingRequired: { type: String, enum: ["Yes", "No"], default: "No" },
-    waist: { type: String },
-    length: { type: String },
-    height: { type: String },
+    status: {
+      type: String,
+      enum: ["Active", "Inactive"],
+      default: "Active",
+    },
     stock: { type: Number, default: 0 },
     lowStockAlertQty: { type: Number, default: 5 },
   },
@@ -102,14 +103,34 @@ const ProductSchema = new Schema(
 
     productDetail: { type: String },
     styleNo: { type: String },
+    styleAndFit:{type:String},
     fabric: { type: String },
     work: { type: String },
     packContains: { type: String },
     care: { type: String },
     note: { type: String },
 
+    shortDescription:{type:String},
+
     productSpeciality: { type: String },
     shippingAndReturns: { type: String, trim: true },
+
+    productionDetail: {
+      enabled: { type: Boolean, default: false },
+      description: { type: String, trim: true },
+    },
+
+    dupatta: {
+      enabled: { type: Boolean, default: false },
+      description: { type: String, trim: true },
+    },
+
+    paddingRequired: { type: String, enum: ["Yes", "No"], default: "No" }, // ✅
+    waist: { type: String },
+    length: { type: String },
+    height: { type: String },
+ 
+
 
     reviews: [ReviewSchema],
     averageRating: { type: Number, min: 0, max: 5, default: 0 },
