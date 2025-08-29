@@ -111,7 +111,15 @@ const loginWithGoogle = async(req,res)=>{
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture } = payload;
+    if (!payload) {
+      return res.status(401).json({ message: "Invalid Google token" });
+    }
+
+    const { email, name, picture, email_verified } = payload;
+
+    if (!email_verified) {
+      return res.status(403).json({ message: "Email not verified by Google" });
+    }
 
     // Find user by email
     let user = await User.findOne({ email });
@@ -123,23 +131,37 @@ const loginWithGoogle = async(req,res)=>{
         email,
         profileImage: picture,
         accountType: "customer",
-        signupMethod: "social",
+        signupMethod: "google",
       });
       await user.save();
     }
 
-    // Track login info (optional)
+    // Update last login
     user.lastLoginAt = new Date();
     await user.save();
 
-    // Generate JWT
+    // Generate JWT for session
     const token = jwt.sign(
-      { ID: user._id, email: user.email,ROLE: 'CUSTOMER' },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.accountType?.toUpperCase() || "CUSTOMER",
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        role: user.accountType,
+      },
+    });
   } catch (error) {
     console.error("Google login error:", error);
     res.status(500).json({ message: "Google login failed" });
