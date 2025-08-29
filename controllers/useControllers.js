@@ -143,9 +143,9 @@ const loginWithGoogle = async(req,res)=>{
     // Generate JWT for session
     const token = jwt.sign(
       {
-        id: user._id,
+        ID: user._id,
         email: user.email,
-        role: user.accountType?.toUpperCase() || "CUSTOMER",
+        ROLE: user.accountType?.toUpperCase() || "CUSTOMER",
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
