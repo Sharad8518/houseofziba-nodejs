@@ -216,9 +216,34 @@ const getAllOrder = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const totalOrders = await Order.countDocuments();
+    const { search, orderNumber, orderStatus } = req.query;
 
-    const orders = await Order.find()
+    // 🔎 Build filter object
+    let filter = {};
+
+    // ✅ Search by customer name or email (case-insensitive)
+    if (search) {
+      filter.$or = [
+        { "user.name": { $regex: search, $options: "i" } },
+        { "user.email": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // ✅ Filter by order number (assuming stored as "orderNumber" field)
+    if (orderNumber) {
+      filter.orderNumber = { $regex: orderNumber, $options: "i" };
+    }
+
+    // ✅ Filter by order status
+    if (orderStatus) {
+      filter.orderStatus = orderStatus;
+    }
+
+    // 📊 Get total
+    const totalOrders = await Order.countDocuments(filter);
+
+    // 📦 Fetch orders
+    const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -230,15 +255,15 @@ const getAllOrder = async (req, res) => {
       totalOrders,
       page,
       limit,
-      totalPages: Math.ceil(totalOrders / limit), // corrected
-      orders
+      totalPages: Math.ceil(totalOrders / limit),
+      orders,
     });
   } catch (error) {
     console.error("Get Orders Error", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch orders",
-      error: error.message
+      error: error.message,
     });
   }
 };

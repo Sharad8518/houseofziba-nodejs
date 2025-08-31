@@ -71,21 +71,36 @@ const addProduct = async (req, res) => {
 /* ---------------- Get All Products ---------------- */
 const getProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search } = req.query;
+    const { page = 1, limit = 20, search, title, itemNumber, status } = req.query;
     const pageNumber = Math.max(Number(page), 1);
     const pageSize = Math.max(Number(limit), 1);
 
-    // Start with an empty filter
-    const filter = {};
+    let filter = {};
 
-    // Only apply search if it exists
+    // 🔎 Global Search (title, description, etc. with $text index)
     if (search && search.trim() !== "") {
       filter.$text = { $search: search };
     }
 
+    // 🔎 Title filter (partial match, case insensitive)
+    if (title) {
+      filter.title = { $regex: title, $options: "i" };
+    }
+
+    // 🔎 Item number filter (exact match)
+    if (itemNumber) {
+      filter.itemNumber = itemNumber;
+    }
+
+    // 🔎 Status filter (exact match, e.g. active/inactive)
+    if (status) {
+      filter.status = status;
+    }
+
     const products = await Product.find(filter)
       .skip((pageNumber - 1) * pageSize)
-      .limit(pageSize);
+      .limit(pageSize)
+      .sort({ createdAt: -1 }); // optional: latest first
 
     const total = await Product.countDocuments(filter);
 
@@ -98,11 +113,10 @@ const getProducts = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get Products Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 /* ---------------- Get Single Product ---------------- */
 const getProductById = async (req, res) => {
   try {
