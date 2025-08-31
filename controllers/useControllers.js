@@ -1,8 +1,7 @@
 const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
-const twilio = require("twilio")
-
+const twilio = require("twilio");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const twilioClient = twilio(
@@ -10,7 +9,7 @@ const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_TOKEN
 );
 
- const sentOTP = async (req, res) => {
+const sentOTP = async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -48,8 +47,7 @@ const twilioClient = twilio(
   }
 };
 
-
-const verifyOTP = async(req,res)=>{
+const verifyOTP = async (req, res) => {
   try {
     const { phone, otp } = req.body;
     if (!phone || !otp) {
@@ -63,7 +61,7 @@ const verifyOTP = async(req,res)=>{
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-     await user.trackLogin(req.ip, req.headers["user-agent"]);
+    await user.trackLogin(req.ip, req.headers["user-agent"]);
 
     // Generate JWT
     const token = jwt.sign(
@@ -71,7 +69,7 @@ const verifyOTP = async(req,res)=>{
         ID: user._id,
         phone: user.phone,
         accountType: user.accountType,
-        ROLE:"CUSTOMER",
+        ROLE: "CUSTOMER",
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
@@ -95,10 +93,10 @@ const verifyOTP = async(req,res)=>{
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
-}
+};
 
-const loginWithGoogle = async(req,res)=>{
- try {
+const loginWithGoogle = async (req, res) => {
+  try {
     const { idToken } = req.body;
     if (!idToken) {
       return res.status(400).json({ message: "ID token required" });
@@ -166,7 +164,7 @@ const loginWithGoogle = async(req,res)=>{
     console.error("Google login error:", error);
     res.status(500).json({ message: "Google login failed" });
   }
-}
+};
 
 const loginWithFacebook = async (req, res) => {
   try {
@@ -183,7 +181,9 @@ const loginWithFacebook = async (req, res) => {
     const { email, name, picture } = fbResponse.data;
 
     if (!email) {
-      return res.status(400).json({ message: "Facebook account must have an email" });
+      return res
+        .status(400)
+        .json({ message: "Facebook account must have an email" });
     }
 
     // ✅ Check if user exists
@@ -214,17 +214,18 @@ const loginWithFacebook = async (req, res) => {
 
     res.json({ token, user });
   } catch (error) {
-    console.error("Facebook login error:", error?.response?.data || error.message);
+    console.error(
+      "Facebook login error:",
+      error?.response?.data || error.message
+    );
     res.status(500).json({ message: "Facebook login failed" });
   }
 };
 
-
-
-const completeProfile = async(req,res)=>{
+const completeProfile = async (req, res) => {
   try {
     const { name, email, addresses } = req.body;
- const { ID } = req;
+    const { ID } = req;
     const user = await User.findById(ID);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -236,7 +237,7 @@ const completeProfile = async(req,res)=>{
 
     // Update addresses if provided
     if (addresses && Array.isArray(addresses)) {
-      user.addresses = addresses.map(addr => ({
+      user.addresses = addresses.map((addr) => ({
         label: addr.label,
         street: addr.street,
         city: addr.city,
@@ -244,11 +245,11 @@ const completeProfile = async(req,res)=>{
         postalCode: addr.postalCode,
         country: addr.country || "India",
         isDefault: addr.isDefault || false,
-        location: addr.location || { type: "Point", coordinates: [0, 0] }
+        location: addr.location || { type: "Point", coordinates: [0, 0] },
       }));
     }
 
-     if (user.accountType === "guest") {
+    if (user.accountType === "guest") {
       user.accountType = "customer";
     }
     await user.save();
@@ -258,7 +259,7 @@ const completeProfile = async(req,res)=>{
     console.error("Profile update error:", error);
     res.status(500).json({ message: "Server error" });
   }
-}
+};
 
 const getProfile = async (req, res) => {
   try {
@@ -266,10 +267,10 @@ const getProfile = async (req, res) => {
 
     const user = await User.findById(ID).select("-otp -__v -deletedAt"); // hide sensitive fields
     if (!user) {
-      return res.status(404).json({ 
-        status: false, 
-        message: "User not found", 
-        data: null 
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+        data: null,
       });
     }
 
@@ -288,13 +289,56 @@ const getProfile = async (req, res) => {
   }
 };
 
+const getAllUser = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    const [users, total] = await Promise.all([
+      User.find()
+        .select("-otp -__v -deletedAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments()
+    ]);
 
- module.exports = { 
-    sentOTP,
-    verifyOTP,
-    loginWithGoogle,
-    loginWithFacebook,
-    completeProfile,
-    getProfile
-  };
+    if (users.length === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "No users found",
+        data: [],
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: "Users fetched successfully",
+      data: users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Get User Error:", error);
+    res.status(500).json({
+      status: false,
+      message: "Server error",
+      data: null,
+    });
+  }
+};
+
+module.exports = {
+  sentOTP,
+  verifyOTP,
+  loginWithGoogle,
+  loginWithFacebook,
+  completeProfile,
+  getProfile,
+  getAllUser,
+};

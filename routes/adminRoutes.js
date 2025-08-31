@@ -78,7 +78,7 @@ const {
   deletePromotion,
 } = require("../controllers/promotionalController");
 
-
+const {getAllUser} = require("../controllers/useControllers.js")
 
 
 const express = require("express");
@@ -136,4 +136,5 @@ router.post("/promotional", createPromotional);
 router.get("/promotional", getPromotions);
 router.put("/promotional/:id", updatePromotion);
 router.delete("/promotional/:id", deletePromotion);
+router.get("/users", getAllUser);
 module.exports = router;
