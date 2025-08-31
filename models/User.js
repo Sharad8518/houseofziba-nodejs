@@ -61,7 +61,7 @@ const userSchema = new mongoose.Schema(
 
     signupMethod: {
       type: String,
-      enum: ["otp", "email", "social"],
+      enum: ["otp", "email", "social","google"],
       default: "otp",
     },
     signupAt: { type: Date, default: Date.now },

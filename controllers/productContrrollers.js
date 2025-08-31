@@ -347,6 +347,8 @@ const productfilter =async (req, res) => {
       fabric,
       work,         // craft
       collections,  // occasion
+      minDiscount,
+      sortBy 
     } = req.query;
 
     const pageNumber = Math.max(Number(page), 1);
@@ -364,22 +366,27 @@ const productfilter =async (req, res) => {
     }
 
     // 🎨 Colour filter (?colour=red&colour=blue)
-    if (colour) {
-      const colours = Array.isArray(colour) ? colour : [colour];
-      filter.colour = { $in: colours.map(c => c.toLowerCase()) };
-    }
+if (colour) {
+  const colours = Array.isArray(colour) ? colour : colour.split(",");
+  filter.colour = { $in: colours.map(c => c.trim()) };
+}
 
     // 📏 Size filter (?size=M&size=XL)
-    if (size) {
-      const sizes = Array.isArray(size) ? size : [size];
-      filter["variants.size"] = { $in: sizes };
-    }
+   if (size) {
+  let sizes = [];
+  if (Array.isArray(size)) {
+    sizes = size;
+  } else {
+    sizes = size.split(","); // support comma separated
+  }
+  filter["variants.size"] = { $in: sizes.map(s => s.trim()) };
+}
 
     // 💰 Price filter (?minPrice=100&maxPrice=500)
     if (minPrice || maxPrice) {
-      filter.salePrice = {};
-      if (minPrice) filter.salePrice.$gte = Number(minPrice);
-      if (maxPrice) filter.salePrice.$lte = Number(maxPrice);
+      filter.mrp = {};
+      if (minPrice) filter.mrp.$gte = Number(minPrice);
+      if (maxPrice) filter.mrp.$lte = Number(maxPrice);
     }
 
     // 📂 Category filter (?categories=Lehenga&categories=Saree)
@@ -414,9 +421,34 @@ const productfilter =async (req, res) => {
     // 🎉 Occasion filter (mapped to collections)
     if (collections) {
       const occ = Array.isArray(collections) ? collections : [collections];
-      filter.collections = { $in: occ };
+      filter.collection = { $in: occ };
     }
 
+
+     if (minDiscount) {
+      filter.discountValue = { $gte: Number(minDiscount) };
+    }
+
+
+     let sortQuery = {};
+    if (sortBy) {
+      switch (sortBy) {
+        case "lowmrp":
+          sortQuery.mrp = 1; // ascending
+          break;
+        case "highmrp":
+          sortQuery.mrp = -1; // descending
+          break;
+        case "discount":
+          sortQuery.discountValue = -1; // highest discount first
+          break;
+        case "newest":
+          sortQuery.createdAt = -1; // latest products
+          break;
+        default:
+          break;
+      }
+    }
     // 🛒 Fetch products
     const products = await Product.find(filter)
       .skip((pageNumber - 1) * pageSize)
