@@ -4,7 +4,13 @@ const Product = require("../models/Product");
 // Add to Cart
 const addToCart = async (req, res) => {
   try {
-    const { productId, sku, attributes = [], quantity = 1 } = req.body;
+    const {
+      productId,
+      sku,
+      attributes = [],
+      quantity = 1,
+      paddingDetails = null, // <-- get padding details from request
+    } = req.body;
     const userId = req.ID;
 
     // Find product
@@ -14,16 +20,17 @@ const addToCart = async (req, res) => {
     // Determine variant
     let variant;
     if (product.variants?.length > 0) {
-      variant = sku ? product.variants.find(v => v.sku === sku) : null;
+      variant = sku ? product.variants.find((v) => v.sku === sku) : null;
 
       if (!variant && attributes.length > 0) {
-        variant = product.variants.find(v =>
-          attributes.every(attr =>
-            v.attributes.some(a => a.name === attr.name && a.value === attr.value)
+        variant = product.variants.find((v) =>
+          attributes.every((attr) =>
+            v.attributes?.some(
+              (a) => a.name === attr.name && a.value === attr.value
+            )
           )
         );
       }
-
       if (!variant) variant = product.variants[0]; // fallback to first variant
     } else {
       variant = {
@@ -33,7 +40,9 @@ const addToCart = async (req, res) => {
       };
     }
 
-    const selectedAttributes = attributes.length ? attributes : variant.attributes || [];
+    const selectedAttributes = attributes.length
+      ? attributes
+      : variant.attributes || [];
     const currentPrice = product.salePrice ?? product.mrp;
 
     // Find or create user's cart
@@ -42,10 +51,14 @@ const addToCart = async (req, res) => {
       cart = new Cart({ user: userId, items: [] });
     }
 
-    // Check if item already exists (same variant + attributes)
-    const existingItem = cart.items.find(item =>
-      item.variant.sku === variant.sku &&
-      JSON.stringify(item.variant.attributes) === JSON.stringify(selectedAttributes)
+    // Check if item already exists (same variant + attributes + padding)
+    const existingItem = cart.items.find(
+      (item) =>
+        item.variant.sku === variant.sku &&
+        JSON.stringify(item.variant.attributes) ===
+          JSON.stringify(selectedAttributes) &&
+        JSON.stringify(item.variant.paddingDetails || null) ===
+          JSON.stringify(paddingDetails)
     );
 
     if (existingItem) {
@@ -60,6 +73,7 @@ const addToCart = async (req, res) => {
           sku: variant.sku,
           attributes: selectedAttributes,
           price: currentPrice,
+          paddingDetails, // <-- store padding details here
         },
         quantity,
         subtotal: currentPrice * quantity,
@@ -83,14 +97,16 @@ const increaseQty = async (req, res) => {
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     // Find cart item
-    const item = cart.items.find(i => 
-      i.product.toString() === productId &&
-      (
-        i.variant.sku === sku ||
-        (attributes.length > 0 && attributes.every(attr =>
-          i.variant.attributes.some(a => a.name === attr.name && a.value === attr.value)
-        ))
-      )
+    const item = cart.items.find(
+      (i) =>
+        i.product.toString() === productId &&
+        (i.variant.sku === sku ||
+          (attributes.length > 0 &&
+            attributes.every((attr) =>
+              i.variant.attributes.some(
+                (a) => a.name === attr.name && a.value === attr.value
+              )
+            )))
     );
 
     if (!item) return res.status(404).json({ message: "Item not in cart" });
@@ -101,14 +117,23 @@ const increaseQty = async (req, res) => {
 
     let variant;
     if (product.variants && product.variants.length > 0) {
-      variant = product.variants.find(v => 
-        v.sku === sku || attributes.every(attr =>
-          v.attributes.some(a => a.name === attr.name && a.value === attr.value)
-        )
+      variant = product.variants.find(
+        (v) =>
+          v.sku === sku ||
+          attributes.every((attr) =>
+            v.attributes.some(
+              (a) => a.name === attr.name && a.value === attr.value
+            )
+          )
       );
       if (!variant) return res.status(400).json({ message: "Invalid variant" });
     } else {
-      variant = { stock: product.inventoryBySize?.get(attributes.find(a => a.name === "Size")?.value) || 0 };
+      variant = {
+        stock:
+          product.inventoryBySize?.get(
+            attributes.find((a) => a.name === "Size")?.value
+          ) || 0,
+      };
     }
 
     // Check stock
@@ -122,7 +147,6 @@ const increaseQty = async (req, res) => {
 
     await cart.save();
     res.json({ message: "Quantity increased", cart });
-
   } catch (err) {
     console.error("Increase Qty Error:", err);
     res.status(500).json({ message: "Server error" });
@@ -136,14 +160,16 @@ const decreaseQty = async (req, res) => {
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     // Find cart item
-    const item = cart.items.find(i => 
-      i.product.toString() === productId &&
-      (
-        i.variant.sku === sku ||
-        (attributes.length > 0 && attributes.every(attr =>
-          i.variant.attributes.some(a => a.name === attr.name && a.value === attr.value)
-        ))
-      )
+    const item = cart.items.find(
+      (i) =>
+        i.product.toString() === productId &&
+        (i.variant.sku === sku ||
+          (attributes.length > 0 &&
+            attributes.every((attr) =>
+              i.variant.attributes.some(
+                (a) => a.name === attr.name && a.value === attr.value
+              )
+            )))
     );
 
     if (!item) return res.status(404).json({ message: "Item not in cart" });
@@ -153,12 +179,11 @@ const decreaseQty = async (req, res) => {
       item.subtotal = item.quantity * item.variant.price;
     } else {
       // Remove item if quantity goes below 1
-      cart.items = cart.items.filter(i => i !== item);
+      cart.items = cart.items.filter((i) => i !== item);
     }
 
     await cart.save();
     res.json({ message: "Quantity decreased", cart });
-
   } catch (err) {
     console.error("Decrease Qty Error:", err);
     res.status(500).json({ message: "Server error" });
@@ -167,25 +192,17 @@ const decreaseQty = async (req, res) => {
 
 const removeFromCart = async (req, res) => {
   try {
-    const { productId, sku, attributes = [] } = req.body; // identify variant
+    const { productId, sku } = req.body; // Only productId and sku
     const cart = await Cart.findOne({ user: req.ID });
 
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Filter out the item to remove
+    // Remove items matching productId and sku
     cart.items = cart.items.filter(
       (item) =>
-        !(
-          item.product.toString() === productId &&
-          (
-            item.variant.sku === sku ||
-            (attributes.length > 0 && attributes.every(attr =>
-              item.variant.attributes.some(a => a.name === attr.name && a.value === attr.value)
-            ))
-          )
-        )
+        !(item.product.toString() === productId && item.variant.sku === sku)
     );
 
     await cart.save();
@@ -216,8 +233,8 @@ const clearCart = async (req, res) => {
 const getCart = async (req, res) => {
   try {
     const cart = await Cart.findOne({ user: req.ID }).populate({
-      path: 'items.product',
-      select: 'title mrp salePrice media variants', // select only the fields you need
+      path: "items.product",
+      select: "title mrp salePrice media variants", // select only the fields you need
     });
 
     if (!cart) {
@@ -231,12 +248,11 @@ const getCart = async (req, res) => {
   }
 };
 
-
- module.exports = { 
-   addToCart,
-   increaseQty,
-   decreaseQty,
-   removeFromCart,
-   clearCart,
-   getCart
-  };
+module.exports = {
+  addToCart,
+  increaseQty,
+  decreaseQty,
+  removeFromCart,
+  clearCart,
+  getCart,
+};

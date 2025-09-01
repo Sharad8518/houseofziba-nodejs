@@ -49,7 +49,6 @@ const {
 
 const {placeOrder,
   updateOrderStatus,
-  createRazorpayOrder,
   verifyRazorpayPayment,
   getUserOrder
 } =require("../controllers/orderController.js")
@@ -99,8 +98,7 @@ router.post("/cart/remove",  removeFromCart);
 router.post("/cart/clear", clearCart);
 router.get("/cart", getCart);                
 router.post("/order/place", placeOrder); 
-router.post("/create-order", createRazorpayOrder); 
-router.post("/order/verify", verifyRazorpayPayment);
+router.post("/order/verify-razorpay", verifyRazorpayPayment);
 router.post("/favorites",addFavorite) 
 router.get("/favorites",getFavorites) 
 router.delete("/favorites/:id",removeFavorite) 

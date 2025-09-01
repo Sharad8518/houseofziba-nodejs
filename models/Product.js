@@ -37,6 +37,7 @@ const ReviewSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     name: String,
     rating: { type: Number, min: 1, max: 5, required: true },
+    media:{MediaSchema},
     title: String,
     comment: String,
     createdAt: { type: Date, default: Date.now },
@@ -100,7 +101,7 @@ const ProductSchema = new Schema(
       required: true,
     },
     estimatedShippingDate: { type: Date },
-
+    estimatedShippingDays:{ type: Number},
     productDetail: { type: String },
     styleNo: { type: String },
     styleAndFit:{type:String},
@@ -109,7 +110,7 @@ const ProductSchema = new Schema(
     packContains: { type: String },
     care: { type: String },
     note: { type: String },
-
+    occasion:{type:String},
     shortDescription:{type:String},
 
     productSpeciality: { type: String },

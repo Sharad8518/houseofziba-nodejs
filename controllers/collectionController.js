@@ -1,4 +1,5 @@
 const Collection = require("../models/Collection.js")
+const { uploadFileToS3 } = require("../middlewares/file_handler");
 
 // Get all collections
 const getCollections = async (req, res) => {
@@ -22,11 +23,25 @@ const getCollection = async (req, res) => {
 };
 
 // Create collection
- const createCollection = async (req, res) => {
+const createCollection = async (req, res) => {
   try {
-    const collection = await Collection.create(req.body);
-    res.status(201).json(collection);
+    // Upload file if provided
+    let imageUrl = "";
+    if (req.file) {
+      imageUrl = await uploadFileToS3(req.file, "collection");
+    } else {
+      return res.status(400).json({ error: "Image is required" });
+    }
+
+    // Create collection with image URL
+    const collection = await Collection.create({
+      ...req.body,
+      image: imageUrl,
+    });
+
+    res.status(201).json({ success: true, collection });
   } catch (err) {
+    console.error("Create Collection Error:", err);
     res.status(400).json({ error: err.message });
   }
 };

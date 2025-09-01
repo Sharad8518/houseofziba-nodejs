@@ -115,7 +115,7 @@ router.put("/subcategorys/:id", updateSubCategory); // UPDATE
 router.delete("/subcategorys/:id", deleteSubCategory); // DELETE
 router.get("/collections", getCollections); // GET all
 router.get("/collections/:id", getCollection); // GET one
-router.post("/collections", createCollection); // CREATE
+router.post("/collections",upload.single("image"), createCollection); // CREATE
 router.put("/collections/:id", updateCollection); // UPDATE
 router.delete("/collections/:id", deleteCollection); // DELETE
 router.post("/FBTItem", upload.array("images", 6), createFBTItem);
