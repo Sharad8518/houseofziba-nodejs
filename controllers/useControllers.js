@@ -224,9 +224,10 @@ const loginWithFacebook = async (req, res) => {
 
 const completeProfile = async (req, res) => {
   try {
-    const { name, email, addresses } = req.body;
+    const { name, email, phone, addresses } = req.body; // include phone
     const { ID } = req;
     const user = await User.findById(ID);
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -234,6 +235,7 @@ const completeProfile = async (req, res) => {
     // Update fields
     if (name) user.name = name;
     if (email) user.email = email;
+    if (phone) user.phone = phone; // update phone
 
     // Update addresses if provided
     if (addresses && Array.isArray(addresses)) {
@@ -252,6 +254,7 @@ const completeProfile = async (req, res) => {
     if (user.accountType === "guest") {
       user.accountType = "customer";
     }
+
     await user.save();
 
     res.json({ message: "Profile updated successfully", user });

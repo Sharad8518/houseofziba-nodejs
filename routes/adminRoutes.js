@@ -59,8 +59,10 @@ const {
   deleteFBTItem,
 } = require("../controllers/frequentlyBoughtTogetherController.js");
 
-const {getAllOrder,updateOrderStatus} =require("../controllers/orderController.js")
-
+const {
+  getAllOrder,
+  updateOrderStatus,
+} = require("../controllers/orderController.js");
 
 const {
   addBanner,
@@ -78,8 +80,12 @@ const {
   deletePromotion,
 } = require("../controllers/promotionalController");
 
-const {getAllUser} = require("../controllers/useControllers.js")
-
+const { getAllUser } = require("../controllers/useControllers.js");
+const {
+  addPolicy,
+getPolicies,
+updatePolicy,
+deletePolicy} = require("../controllers/policyController.js")
 
 const express = require("express");
 const verifyJWT = require("../middlewares/verifyJWT");
@@ -115,15 +121,15 @@ router.put("/subcategorys/:id", updateSubCategory); // UPDATE
 router.delete("/subcategorys/:id", deleteSubCategory); // DELETE
 router.get("/collections", getCollections); // GET all
 router.get("/collections/:id", getCollection); // GET one
-router.post("/collections",upload.single("image"), createCollection); // CREATE
+router.post("/collections", upload.single("image"), createCollection); // CREATE
 router.put("/collections/:id", updateCollection); // UPDATE
 router.delete("/collections/:id", deleteCollection); // DELETE
 router.post("/FBTItem", upload.array("images", 6), createFBTItem);
 router.get("/FBTItem", getFBTItems);
 router.put("/FBTItem/:id", updateFBTItem);
 router.delete("/FBTItem/:id", deleteFBTItem);
-router.post("/add-fbt", addfbtoProduct);        // Add FBT item
-router.delete("/remove-fbt", removefbtFromProduct)
+router.post("/add-fbt", addfbtoProduct); // Add FBT item
+router.delete("/remove-fbt", removefbtFromProduct);
 router.post("/add-similar", addSimilarProduct);
 router.get("/orders", getAllOrder);
 router.put("/updateOrdersStatus", updateOrderStatus);
@@ -137,4 +143,9 @@ router.get("/promotional", getPromotions);
 router.put("/promotional/:id", updatePromotion);
 router.delete("/promotional/:id", deletePromotion);
 router.get("/users", getAllUser);
+router.post("/policy",addPolicy)
+router.get("/policy",getPolicies)
+router.put("/policy/:id",updatePolicy)
+router.delete("/policy/:id",deletePolicy)
+
 module.exports = router;

@@ -18,9 +18,9 @@ const cartItemSchema = new Schema(
         },
       ],
       paddingDetails: {
-       waist: { type: Number, trim: true },
-       length: { type: Number, trim: true },
-       height: { type: Number, trim: true },
+       waist: { type: String, trim: true },
+       length: { type: String, trim: true },
+       height: { type: String, trim: true },
        unit: { type: String, default: "cm" }
        },
       price: { type: Number, required: true },

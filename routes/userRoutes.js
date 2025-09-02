@@ -74,6 +74,8 @@ const {
   deletePromotion,
 } = require("../controllers/promotionalController");
 
+
+
 const express = require('express'); 
 const verifyJWT = require("../middlewares/verifyJWT");
 const router = express.Router();
@@ -88,6 +90,7 @@ router.get("/products/:id", getProductById);
 router.get("/navbar",getNavbarData)
 router.get("/banner",getActiveBanners)
 router.get("/promotional", getPromotions);
+router.get("/collections", getCollections);
 router.use(verifyJWT("CUSTOMER"));
 router.post("/completeProfile", completeProfile);
 router.get("/profile", getProfile);
