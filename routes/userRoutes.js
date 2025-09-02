@@ -36,7 +36,7 @@ const {
   updateCollection,
   deleteCollection,
 } = require('../controllers/collectionController.js')
-const { getProducts, getProductById,productfilter } = require("../controllers/productContrrollers");
+const { getProducts, getProductById,productfilter,getCurrentMonthProducts,addOrUpdateReview } = require("../controllers/productContrrollers");
 
 const {
    addToCart,
@@ -73,7 +73,7 @@ const {
   updatePromotion,
   deletePromotion,
 } = require("../controllers/promotionalController");
-
+const { upload } = require("../middlewares/file_handler");
 
 
 const express = require('express'); 
@@ -91,6 +91,7 @@ router.get("/navbar",getNavbarData)
 router.get("/banner",getActiveBanners)
 router.get("/promotional", getPromotions);
 router.get("/collections", getCollections);
+router.get("/products/current-month", getCurrentMonthProducts);
 router.use(verifyJWT("CUSTOMER"));
 router.post("/completeProfile", completeProfile);
 router.get("/profile", getProfile);
@@ -105,6 +106,7 @@ router.post("/order/verify-razorpay", verifyRazorpayPayment);
 router.post("/favorites",addFavorite) 
 router.get("/favorites",getFavorites) 
 router.delete("/favorites/:id",removeFavorite) 
-router.get("/order",getUserOrder) 
+router.get("/order",getUserOrder)
+router.post("/:productId/review", upload.single("file"), addOrUpdateReview); 
 
 module.exports = router;

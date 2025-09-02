@@ -1,5 +1,5 @@
 const Product = require("../models/Product");
-const { uploadFilesToS3 } = require("../middlewares/file_handler");
+const { uploadFilesToS3,uploadFileToS3 } = require("../middlewares/file_handler");
 
 /* ---------------- Add Product ---------------- */
 const addProduct = async (req, res) => {
@@ -32,10 +32,13 @@ const addProduct = async (req, res) => {
       }
     };
 
-    ["variants", "seo", "faq","productionDetail", "dupatta"].forEach(parseIfString);
+    ["variants", "seo", "faq", "productionDetail", "dupatta"].forEach(
+      parseIfString
+    );
 
     // Ensure numeric values are parsed
-    if (productData.discountValue) productData.discountValue = Number(productData.discountValue);
+    if (productData.discountValue)
+      productData.discountValue = Number(productData.discountValue);
     if (productData.price) productData.price = Number(productData.price);
 
     // Validate required fields
@@ -71,7 +74,14 @@ const addProduct = async (req, res) => {
 /* ---------------- Get All Products ---------------- */
 const getProducts = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, title, itemNumber, status } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      title,
+      itemNumber,
+      status,
+    } = req.query;
     const pageNumber = Math.max(Number(page), 1);
     const pageSize = Math.max(Number(limit), 1);
 
@@ -122,7 +132,7 @@ const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
 
-     const product = await Product.findById(id)
+    const product = await Product.findById(id)
       .populate({
         path: "similarProducts",
         select: "title description media salePrice mrp status", // select fields you need
@@ -140,18 +150,18 @@ const getProductById = async (req, res) => {
     }
 
     const productObj = product.toObject();
-if (product.inventoryBySize) {
-  // Convert Map → Object
-  const allSizes = Object.fromEntries(product.inventoryBySize);
+    if (product.inventoryBySize) {
+      // Convert Map → Object
+      const allSizes = Object.fromEntries(product.inventoryBySize);
 
-  // Filter sizes with qty > 0
-  const availableSizes = Object.entries(allSizes)
-    .filter(([size, qty]) => qty > 0)
-    .map(([size]) => size); // keep only the size keys
+      // Filter sizes with qty > 0
+      const availableSizes = Object.entries(allSizes)
+        .filter(([size, qty]) => qty > 0)
+        .map(([size]) => size); // keep only the size keys
 
-  productObj.inventoryBySize = availableSizes;
-}
-    
+      productObj.inventoryBySize = availableSizes;
+    }
+
     res.json({
       success: true,
       product: {
@@ -189,7 +199,9 @@ const addfbtoProduct = async (req, res) => {
     }
 
     // Merge unique IDs
-    const existing = product.frequentlyBoughtTogether.map((id) => id.toString());
+    const existing = product.frequentlyBoughtTogether.map((id) =>
+      id.toString()
+    );
     const toAdd = fbtIds.filter((id) => !existing.includes(id));
 
     if (toAdd.length > 0) {
@@ -256,7 +268,12 @@ const addSimilarProduct = async (req, res) => {
   try {
     const { productId, similarProductIds } = req.body;
 
-    if (!productId || !similarProductIds || !Array.isArray(similarProductIds) || similarProductIds.length === 0) {
+    if (
+      !productId ||
+      !similarProductIds ||
+      !Array.isArray(similarProductIds) ||
+      similarProductIds.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "productId and similarProductIds[] are required",
@@ -343,10 +360,8 @@ const addFrequentlyBoughtTogether = async (req, res) => {
   }
 };
 
-
-
-const productfilter =async (req, res) => {
- try {
+const productfilter = async (req, res) => {
+  try {
     const {
       page = 1,
       limit = 20,
@@ -359,10 +374,10 @@ const productfilter =async (req, res) => {
       subCategories,
       header,
       fabric,
-      work,         // craft
-      collections,  // occasion
+      work, // craft
+      collections, // occasion
       minDiscount,
-      sortBy 
+      sortBy,
     } = req.query;
 
     const pageNumber = Math.max(Number(page), 1);
@@ -375,26 +390,26 @@ const productfilter =async (req, res) => {
       filter.$or = [
         { title: new RegExp(search, "i") },
         { description: new RegExp(search, "i") },
-        { tags: { $in: [new RegExp(search, "i")] } }
+        { tags: { $in: [new RegExp(search, "i")] } },
       ];
     }
 
     // 🎨 Colour filter (?colour=red&colour=blue)
-if (colour) {
-  const colours = Array.isArray(colour) ? colour : colour.split(",");
-  filter.colour = { $in: colours.map(c => c.trim()) };
-}
+    if (colour) {
+      const colours = Array.isArray(colour) ? colour : colour.split(",");
+      filter.colour = { $in: colours.map((c) => c.trim()) };
+    }
 
     // 📏 Size filter (?size=M&size=XL)
-   if (size) {
-  let sizes = [];
-  if (Array.isArray(size)) {
-    sizes = size;
-  } else {
-    sizes = size.split(","); // support comma separated
-  }
-  filter["variants.size"] = { $in: sizes.map(s => s.trim()) };
-}
+    if (size) {
+      let sizes = [];
+      if (Array.isArray(size)) {
+        sizes = size;
+      } else {
+        sizes = size.split(","); // support comma separated
+      }
+      filter["variants.size"] = { $in: sizes.map((s) => s.trim()) };
+    }
 
     // 💰 Price filter (?minPrice=100&maxPrice=500)
     if (minPrice || maxPrice) {
@@ -411,7 +426,9 @@ if (colour) {
 
     // 📂 SubCategory filter
     if (subCategories) {
-      const subs = Array.isArray(subCategories) ? subCategories : [subCategories];
+      const subs = Array.isArray(subCategories)
+        ? subCategories
+        : [subCategories];
       filter.subCategories = { $in: subs };
     }
 
@@ -438,13 +455,11 @@ if (colour) {
       filter.collection = { $in: occ };
     }
 
-
-     if (minDiscount) {
+    if (minDiscount) {
       filter.discountValue = { $gte: Number(minDiscount) };
     }
 
-
-     let sortQuery = {};
+    let sortQuery = {};
     if (sortBy) {
       switch (sortBy) {
         case "lowmrp":
@@ -482,7 +497,135 @@ if (colour) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
   }
-}
+};
+
+const getCurrentMonthProducts = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const pageNumber = Math.max(Number(page), 1);
+    const pageSize = Math.max(Number(limit), 1);
+
+    const now = new Date();
+
+    // First day of the current month
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Last day of the current month
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const filter = { createdAt: { $gte: startOfMonth, $lte: endOfMonth } };
+
+    const products = await Product.find(filter)
+      .skip((pageNumber - 1) * pageSize)
+      .limit(pageSize)
+      .sort({ createdAt: -1 });
+
+    const total = await Product.countDocuments(filter);
+
+    res.json({
+      success: true,
+      total,
+      page: pageNumber,
+      limit: pageSize,
+      pages: Math.ceil(total / pageSize),
+      products,
+    });
+  } catch (error) {
+    console.error("Get Current Month Products Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const addOrUpdateReview = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { rating, title, comment,userName } = req.body;
+
+    if (!rating) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Rating is required" });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
+    }
+
+    const userId = req.ID;       // ✅ from protect middleware
+
+    let media = null;
+
+    // --- Handle image upload if present
+    if (req.file) {
+      const file = req.file; // multer single upload ("file")
+      const uploadResult = await uploadFileToS3(file, "reviews"); // folder = reviews
+      media = {
+        url: uploadResult.Location,
+        alt: title || "review image",
+        kind: "image",
+        bytes: file.size,
+        width: null,
+        height: null,
+      };
+    }
+
+    // --- Check if user already reviewed
+    const existingReviewIndex = product.reviews.findIndex(
+      (r) => r.userId.toString() === userId.toString()
+    );
+
+    if (existingReviewIndex > -1) {
+      // Update existing review
+      product.reviews[existingReviewIndex] = {
+        ...product.reviews[existingReviewIndex]._doc,
+        rating,
+        title,
+        comment,
+        media: media || product.reviews[existingReviewIndex].media,
+        updatedAt: new Date(),
+      };
+    } else {
+      // Add new review
+      product.reviews.push({
+        userId,
+        name: userName,
+        rating,
+        title,
+        comment,
+        media,
+        createdAt: new Date(),
+      });
+    }
+
+    // --- Update average rating
+    const ratings = product.reviews.map((r) => r.rating);
+    product.averageRating = ratings.length
+      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+      : 0;
+
+    await product.save();
+
+    res.json({
+      success: true,
+      message: existingReviewIndex > -1 ? "Review updated" : "Review added",
+      product,
+    });
+  } catch (error) {
+    console.error("Review Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 module.exports = {
   addProduct,
@@ -492,5 +635,7 @@ module.exports = {
   removefbtFromProduct,
   addSimilarProduct,
   productfilter,
-  addFrequentlyBoughtTogether
+  addFrequentlyBoughtTogether,
+  getCurrentMonthProducts,
+  addOrUpdateReview,
 };
