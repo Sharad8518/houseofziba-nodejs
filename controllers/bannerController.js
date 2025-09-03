@@ -37,8 +37,7 @@ const getActiveBanners = async (req, res) => {
   try {
     const now = new Date();
     const banners = await Banner.find({
-      active: true,
-      $or: [{ endDate: null }, { endDate: { $gte: now } }],
+      active: true
     }).sort({ startDate: -1 });
     res.json(banners);
   } catch (err) {

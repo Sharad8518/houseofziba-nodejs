@@ -2,6 +2,7 @@ const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
 const twilio = require("twilio");
+const Order = require("../models/Order")
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const twilioClient = twilio(
@@ -298,13 +299,41 @@ const getAllUser = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    const { startDate, endDate, state, hasPurchased, lastLogin, search } = req.query;
+
+    // Build user filter
+    const userFilter = {};
+
+    if (startDate || endDate) {
+      userFilter.createdAt = {};
+      if (startDate) userFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) userFilter.createdAt.$lte = new Date(endDate);
+    }
+
+    if (state) {
+      userFilter.addresses = { $elemMatch: { state } };
+    }
+
+    if (lastLogin) {
+      userFilter.lastLoginAt = { $gte: new Date(lastLogin) };
+    }
+
+    if (search) {
+      userFilter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Fetch users
     const [users, total] = await Promise.all([
-      User.find()
+      User.find(userFilter)
         .select("-otp -__v -deletedAt")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      User.countDocuments()
+      User.countDocuments(userFilter),
     ]);
 
     if (users.length === 0) {
@@ -315,10 +344,53 @@ const getAllUser = async (req, res) => {
       });
     }
 
+    // Fetch orders
+    const userIds = users.map((u) => u._id);
+    const orders = await Order.find({ user: { $in: userIds } })
+      .populate({
+        path: "items.product",
+        select: "itemNumber title media mrp",
+      })
+      .select("user items totalAmount orderStatus createdAt");
+
+    const ordersByUser = {};
+    orders.forEach((order) => {
+      const uid = String(order.user);
+      if (!ordersByUser[uid]) ordersByUser[uid] = [];
+      ordersByUser[uid].push({
+        orderId: order._id,
+        totalAmount: order.totalAmount,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        items: order.items.map((item) => ({
+          productId: item.product?._id,
+          productName: item.product?.title,
+          price: item.variant?.price || item.subtotal,
+          quantity: item.quantity,
+          subtotal: item.subtotal,
+        })),
+      });
+    });
+
+    let enrichedUsers = users.map((user) => {
+      const uid = String(user._id);
+      return {
+        ...user.toObject(),
+        hasPurchased: !!ordersByUser[uid],
+        orders: ordersByUser[uid] || [],
+      };
+    });
+
+    if (hasPurchased === "true") {
+      enrichedUsers = enrichedUsers.filter((u) => u.hasPurchased);
+    } else if (hasPurchased === "false") {
+      enrichedUsers = enrichedUsers.filter((u) => !u.hasPurchased);
+    }
+
     res.status(200).json({
       status: true,
       message: "Users fetched successfully",
-      data: users,
+      data: enrichedUsers,
       pagination: {
         total,
         page,
@@ -335,6 +407,7 @@ const getAllUser = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   sentOTP,
