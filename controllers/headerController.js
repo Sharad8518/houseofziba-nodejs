@@ -1,9 +1,9 @@
 const Header  = require ("../models/Header.js");
-
+const { uploadFileToS3 } = require("../middlewares/file_handler");
 // Get all
 const getHeaders = async (req, res) => {
   try {
-    const headers = await Header.find({ status: "Active",showNavbar:"Yes" }); // only Active
+    const headers = await Header.find(); // only Active
     res.json(headers);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -33,7 +33,17 @@ const getHeader = async (req, res) => {
 // Create
 const createHeader = async (req, res) => {
   try {
-    const header = await Header.create(req.body);
+      let imageUrl = "";
+        if (req.file) {
+          imageUrl = await uploadFileToS3(req.file, "header");
+        } else {
+          return res.status(400).json({ error: "Image is required" });
+        }
+    const header = await Header.create({
+      ...req.body,
+    image: imageUrl,
+    });
+  
     res.status(201).json(header);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -43,7 +53,28 @@ const createHeader = async (req, res) => {
 // Update
 const updateHeader = async (req, res) => {
   try {
-    const header = await Header.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    let imageUrl = "";
+
+    if (req.file) {
+      imageUrl = await uploadFileToS3(req.file, "header");
+    }
+
+    // Merge req.body with imageUrl if available
+    const updateData = {
+      ...req.body,
+      image: imageUrl, // only add if not empty
+    };
+
+    const header = await Header.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!header) {
+      return res.status(404).json({ error: "Header not found" });
+    }
+
     res.json(header);
   } catch (err) {
     res.status(400).json({ error: err.message });

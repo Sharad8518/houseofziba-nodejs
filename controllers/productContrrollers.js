@@ -32,7 +32,7 @@ const addProduct = async (req, res) => {
       }
     };
 
-    ["variants", "seo", "faq", "productionDetail", "dupatta"].forEach(
+    ["variants", "seo", "faq", "productionDetail", "dupatta","shippingAndReturns"].forEach(
       parseIfString
     );
 

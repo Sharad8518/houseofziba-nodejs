@@ -30,6 +30,7 @@ const getNavbarData = async (req, res) => {
         return {
           _id: header._id,
           title: header.title,
+          image: header.image,
           slug: header.slug,
           categories: categoriesWithSub,
         };

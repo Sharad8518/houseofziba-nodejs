@@ -9,7 +9,7 @@ const policySchemm = new Schema(
       require: true,
     },
 
-    decreption: {
+    description: {
       type: String,
       trim: true,
       require: true,

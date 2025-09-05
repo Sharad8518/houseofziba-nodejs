@@ -54,6 +54,13 @@ const FAQSchema = new Schema(
   { _id: true }
 );
 
+
+const shipmentSchema = new Schema(
+  {
+    title:{type:String, trim:true},
+    description:{type:String, trim:true}
+  }
+)
 // --- SEO
 const SEOListingSchema = new Schema(
   {
@@ -69,6 +76,8 @@ const SEOListingSchema = new Schema(
   { _id: false }
 );
 
+
+
 // --- Product
 const ProductSchema = new Schema(
   {
@@ -80,6 +89,11 @@ const ProductSchema = new Schema(
     itemNumber: { type: String, required: true, trim: true, unique: true },
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
+    productType: {
+    type: String,
+    enum: ["Cloths", "Jewellery"], // restricts values
+    required: true,
+  },
 
     media: [MediaSchema],
     variants: [VariantSchema],
@@ -114,7 +128,7 @@ const ProductSchema = new Schema(
     shortDescription:{type:String},
 
     productSpeciality: { type: String },
-    shippingAndReturns: { type: String, trim: true },
+    shippingAndReturns:shipmentSchema ,
 
     productionDetail: {
       enabled: { type: Boolean, default: false },
