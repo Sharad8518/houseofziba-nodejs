@@ -3,7 +3,7 @@ const Header  = require ("../models/Header.js");
 // Get all
 const getHeaders = async (req, res) => {
   try {
-    const headers = await Header.find({ status: "Active" }); // only Active
+    const headers = await Header.find({ status: "Active",showNavbar:"Yes" }); // only Active
     res.json(headers);
   } catch (err) {
     res.status(500).json({ error: err.message });

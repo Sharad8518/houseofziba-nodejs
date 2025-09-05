@@ -2,7 +2,7 @@ const User = require("../models/User");
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
 const twilio = require("twilio");
-const Order = require("../models/Order")
+const Order = require("../models/Order");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const twilioClient = twilio(
@@ -299,41 +299,93 @@ const getAllUser = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const { startDate, endDate, state, hasPurchased, lastLogin, search } = req.query;
+    const { startDate, endDate, state, hasPurchased, lastLogin, search } =
+      req.query;
 
-    // Build user filter
-    const userFilter = {};
+    // ---------- Build filters ----------
+    const andConditions = [];
 
+    // createdAt filter (date range)
     if (startDate || endDate) {
-      userFilter.createdAt = {};
-      if (startDate) userFilter.createdAt.$gte = new Date(startDate);
-      if (endDate) userFilter.createdAt.$lte = new Date(endDate);
+      const createdAtConditions = [];
+
+      if (startDate) {
+        createdAtConditions.push({
+          $gte: [
+            { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            startDate,
+          ],
+        });
+      }
+
+      if (endDate) {
+        createdAtConditions.push({
+          $lte: [
+            { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            endDate,
+          ],
+        });
+      }
+
+      andConditions.push({ $and: createdAtConditions });
     }
 
-    if (state) {
-      userFilter.addresses = { $elemMatch: { state } };
-    }
-
+    // lastLogin filter (exact date match)
     if (lastLogin) {
-      userFilter.lastLoginAt = { $gte: new Date(lastLogin) };
+      const isoDate = new Date(lastLogin).toISOString().split("T")[0];
+      andConditions.push({
+        $eq: [
+          { $dateToString: { format: "%Y-%m-%d", date: "$lastLoginAt" } },
+          isoDate,
+        ],
+      });
     }
 
+    // search filter
     if (search) {
-      userFilter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { phone: { $regex: search, $options: "i" } },
+        ],
+      });
     }
 
-    // Fetch users
+    // state filter
+    if (state) {
+  andConditions.push({
+    addresses: { $elemMatch: { state } }
+  });
+}
+
+
+    // final match stage
+    const matchStage = {};
+    if (andConditions.length > 0) {
+      matchStage.$expr = { $and: andConditions.filter((c) => c.$eq || c.$and) };
+      matchStage.$or = andConditions.filter((c) => c.$or)[0]?.$or || undefined;
+      if (!matchStage.$or) delete matchStage.$or;
+    }
+
+    // ---------- Aggregation ----------
+    const pipeline = [
+      { $match: matchStage },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          otp: 0,
+          __v: 0,
+          deletedAt: 0,
+        },
+      },
+    ];
+
     const [users, total] = await Promise.all([
-      User.find(userFilter)
-        .select("-otp -__v -deletedAt")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      User.countDocuments(userFilter),
+      User.aggregate(pipeline),
+      User.countDocuments(matchStage),
     ]);
 
     if (users.length === 0) {
@@ -344,7 +396,7 @@ const getAllUser = async (req, res) => {
       });
     }
 
-    // Fetch orders
+    // ---------- Orders ----------
     const userIds = users.map((u) => u._id);
     const orders = await Order.find({ user: { $in: userIds } })
       .populate({
@@ -375,7 +427,7 @@ const getAllUser = async (req, res) => {
     let enrichedUsers = users.map((user) => {
       const uid = String(user._id);
       return {
-        ...user.toObject(),
+        ...user,
         hasPurchased: !!ordersByUser[uid],
         orders: ordersByUser[uid] || [],
       };

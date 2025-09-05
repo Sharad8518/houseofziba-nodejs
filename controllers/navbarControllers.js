@@ -5,7 +5,7 @@ const SubCategory = require("../models/SubCategory");
 // Get all headers with categories and subcategories (for navbar)
 const getNavbarData = async (req, res) => {
   try {
-    const headers = await Header.find().sort({ createdAt: 1 });
+    const headers = await Header.find({ status: "Active",showNavbar:"Yes" }).sort({ createdAt: 1 });
 
     const result = await Promise.all(
       headers.map(async (header) => {

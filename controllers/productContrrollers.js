@@ -36,6 +36,19 @@ const addProduct = async (req, res) => {
       parseIfString
     );
 
+       ["categories", "subCategories", "collections"].forEach((field) => {
+      if (productData[field] && Array.isArray(productData[field])) {
+        productData[field] = productData[field].map((val) => {
+          try {
+            return typeof val === "string" ? JSON.parse(val) : val;
+          } catch (err) {
+            return val;
+          }
+        }).flat();
+      }
+    });
+
+
     // Ensure numeric values are parsed
     if (productData.discountValue)
       productData.discountValue = Number(productData.discountValue);
