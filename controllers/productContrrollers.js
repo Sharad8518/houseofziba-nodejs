@@ -1,5 +1,5 @@
 const Product = require("../models/Product");
-const { uploadFilesToS3,uploadFileToS3 } = require("../middlewares/file_handler");
+const { uploadFilesToS3,uploadFileToS3 ,deleteFileFromS3 } = require("../middlewares/file_handler");
 
 /* ---------------- Add Product ---------------- */
 const addProduct = async (req, res) => {
@@ -79,6 +79,163 @@ const addProduct = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create product",
+      error: error.message,
+    });
+  }
+};
+
+/* ---------------- Edit Products ---------------- */
+
+const editProduct = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const updateData = { ...req.body };
+
+    // ------------------------------
+    // Remove fields we don’t want to edit yet
+    // ------------------------------
+    delete updateData.frequentlyBoughtTogether;
+    delete updateData.similarProducts;
+    delete updateData.reviews;
+
+    // ------------------------------
+    // 1️⃣ Handle file uploads
+    // ------------------------------
+    if (req.files) {
+      const filesArray = Array.isArray(req.files) ? req.files : [req.files];
+      const uploadedMedia = await uploadFilesToS3(filesArray, "products");
+
+      const newMedia = filesArray.map((file, index) => ({
+        url: uploadedMedia[index].url,
+        alt: file.originalname,
+        kind: file.mimetype.startsWith("video") ? "video" : "image",
+        bytes: file.size,
+      }));
+
+      const existingProduct = await Product.findById(productId);
+      if (!existingProduct) return res.status(404).json({ message: "Product not found" });
+
+      updateData.media = [...(existingProduct.media || []), ...newMedia];
+    }
+
+    // ------------------------------
+    // 2️⃣ Parse JSON string fields
+    // ------------------------------
+    const jsonFields = [
+      "variants",
+      "seo",
+      "faq",
+      "productionDetail",
+      "dupatta",
+      "shippingAndReturns",
+    ];
+
+    jsonFields.forEach((field) => {
+      if (updateData[field] && typeof updateData[field] === "string") {
+        try {
+          updateData[field] = JSON.parse(updateData[field]);
+        } catch {
+          console.warn(`Failed to parse ${field}, leaving as string`);
+        }
+      }
+    });
+
+    // ------------------------------
+    // 3️⃣ Parse categories/subCategories/collections
+    // ------------------------------
+    ["categories", "subCategories", "collections"].forEach((field) => {
+      if (updateData[field] && Array.isArray(updateData[field])) {
+        updateData[field] = updateData[field]
+          .map((val) => {
+            try {
+              return typeof val === "string" ? JSON.parse(val) : val;
+            } catch {
+              return val;
+            }
+          })
+          .flat();
+      }
+    });
+
+    // ------------------------------
+    // 4️⃣ Numeric fields
+    // ------------------------------
+    if (updateData.discountValue) updateData.discountValue = Number(updateData.discountValue);
+    if (updateData.price) updateData.price = Number(updateData.price);
+
+    // ------------------------------
+    // 5️⃣ Update product
+    // ------------------------------
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    Object.assign(product, updateData); // merge updates
+    await product.save(); // triggers pre-save hooks (SKU, slug, etc.)
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product,
+    });
+  } catch (error) {
+    console.error("Edit Product Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update product",
+      error: error.message,
+    });
+  }
+};
+
+
+const updateProductMedia = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    // 1️⃣ Handle deletion
+    // req.body.deleteUrls should be an array of media URLs to delete
+    if (req.body.deleteUrls && Array.isArray(req.body.deleteUrls)) {
+      for (const url of req.body.deleteUrls) {
+        // Remove from S3
+        try {
+          await deleteFileFromS3(url);
+        } catch (err) {
+          console.warn("Failed to delete from S3:", err);
+        }
+
+        // Remove from product media array
+        product.media = product.media.filter((m) => m.url !== url);
+      }
+    }
+
+    // 2️⃣ Handle new uploads
+    if (req.files && req.files.length > 0) {
+      const uploadedMedia = await uploadFilesToS3(req.files, "products");
+      const newMedia = req.files.map((file, i) => ({
+        url: uploadedMedia[i].url,
+        alt: file.originalname,
+        kind: file.mimetype.startsWith("video") ? "video" : "image",
+        bytes: file.size,
+      }));
+
+      product.media.push(...newMedia);
+    }
+
+    // 3️⃣ Save updated product
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Product media updated successfully",
+      media: product.media,
+    });
+  } catch (error) {
+    console.error("Update Product Media Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update product media",
       error: error.message,
     });
   }
@@ -432,19 +589,19 @@ const productfilter = async (req, res) => {
     }
 
     // 📂 Category filter (?categories=Lehenga&categories=Saree)
-    if (categories) {
-      const cats = Array.isArray(categories) ? categories : [categories];
-      filter.categories = { $in: cats };
-    }
-
+   if (categories) {
+  const cats = Array.isArray(categories) ? categories : [categories];
+  filter.categories = {
+    $in: cats.map(c => JSON.stringify([c])) // match ["Fashion Jewelry"]
+  };
+}
     // 📂 SubCategory filter
     if (subCategories) {
-      const subs = Array.isArray(subCategories)
-        ? subCategories
-        : [subCategories];
-      filter.subCategories = { $in: subs };
-    }
-
+  const subs = Array.isArray(subCategories) ? subCategories : [subCategories];
+  filter.subCategories = {
+    $in: subs.map(s => JSON.stringify([s]))
+  };
+}
     // 🏷 Header filter
     if (header) {
       filter.header = new RegExp(header, "i");
@@ -464,9 +621,11 @@ const productfilter = async (req, res) => {
 
     // 🎉 Occasion filter (mapped to collections)
     if (collections) {
-      const occ = Array.isArray(collections) ? collections : [collections];
-      filter.collection = { $in: occ };
-    }
+  const occ = Array.isArray(collections) ? collections : [collections];
+  filter.collections = {
+    $in: occ.map(o => JSON.stringify([o]))
+  };
+}
 
     if (minDiscount) {
       filter.discountValue = { $gte: Number(minDiscount) };
@@ -641,7 +800,8 @@ const addOrUpdateReview = async (req, res) => {
 };
 
 module.exports = {
-  addProduct,
+  addProduct, 
+  editProduct,
   getProducts,
   getProductById,
   addfbtoProduct,
@@ -651,4 +811,5 @@ module.exports = {
   addFrequentlyBoughtTogether,
   getCurrentMonthProducts,
   addOrUpdateReview,
+  updateProductMedia
 };

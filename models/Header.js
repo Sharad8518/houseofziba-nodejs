@@ -14,7 +14,7 @@ const headerSchema = new mongoose.Schema(
       enum: ["Yes", "No"],
       default: "Yes",
     },
-    image: { type: String,required: true},
+   
      addCategory:{
       type: String,
       enum: ["Yes", "No"],

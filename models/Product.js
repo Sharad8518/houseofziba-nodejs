@@ -37,7 +37,7 @@ const ReviewSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     name: String,
     rating: { type: Number, min: 1, max: 5, required: true },
-    media:{MediaSchema},
+    media: { MediaSchema },
     title: String,
     comment: String,
     createdAt: { type: Date, default: Date.now },
@@ -54,29 +54,24 @@ const FAQSchema = new Schema(
   { _id: true }
 );
 
-
-const shipmentSchema = new Schema(
-  {
-    title:{type:String, trim:true},
-    description:{type:String, trim:true}
-  }
-)
+const shipmentSchema = new Schema({
+  title: { type: String, trim: true },
+  description: { type: String, trim: true },
+});
 // --- SEO
 const SEOListingSchema = new Schema(
   {
     title: { type: String, trim: true },
     description: { type: String, trim: true },
-    slug: { 
-      type: String, 
-      trim: true, 
-      lowercase: true, 
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
     },
     keywords: [{ type: String, trim: true }],
   },
   { _id: false }
 );
-
-
 
 // --- Product
 const ProductSchema = new Schema(
@@ -90,19 +85,24 @@ const ProductSchema = new Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     productType: {
-    type: String,
-    enum: ["Cloths", "Jewellery"], // restricts values
-    required: true,
-  },
+      type: String,
+      enum: ["Cloths", "Jewellery"], // restricts values
+      required: true,
+    },
 
     media: [MediaSchema],
     variants: [VariantSchema],
+    quantity: { type: Number, min: 0 },
 
     costPrice: { type: Number, min: 0 },
     marginPercent: { type: Number, min: 0, max: 100 },
     mrp: { type: Number, min: 0, required: true },
     salePrice: { type: Number, min: 0 },
-    discountType: { type: String, enum: ["percent", "flat"], default: "percent" },
+    discountType: {
+      type: String,
+      enum: ["percent", "flat"],
+      default: "percent",
+    },
     discountValue: { type: Number, default: 0, min: 0 },
     saleStart: { type: Date },
     saleEnd: { type: Date },
@@ -115,20 +115,20 @@ const ProductSchema = new Schema(
       required: true,
     },
     estimatedShippingDate: { type: Date },
-    estimatedShippingDays:{ type: Number},
+    estimatedShippingDays: { type: Number },
     productDetail: { type: String },
     styleNo: { type: String },
-    styleAndFit:{type:String},
+    styleAndFit: { type: String },
     fabric: { type: String },
     work: { type: String },
     packContains: { type: String },
     care: { type: String },
     note: { type: String },
-    occasion:{type:String},
-    shortDescription:{type:String},
+    occasion: { type: String },
+    shortDescription: { type: String },
 
     productSpeciality: { type: String },
-    shippingAndReturns:shipmentSchema ,
+    shippingAndReturns: shipmentSchema,
 
     productionDetail: {
       enabled: { type: Boolean, default: false },
@@ -144,8 +144,6 @@ const ProductSchema = new Schema(
     waist: { type: String },
     length: { type: String },
     height: { type: String },
- 
-
 
     reviews: [ReviewSchema],
     averageRating: { type: Number, min: 0, max: 5, default: 0 },
@@ -156,7 +154,11 @@ const ProductSchema = new Schema(
     seo: SEOListingSchema,
     faq: [FAQSchema],
 
-    status: { type: String, enum: ["DRAFT", "ACTIVE", "ARCHIVED"], default: "DRAFT" },
+    status: {
+      type: String,
+      enum: ["DRAFT", "ACTIVE", "ARCHIVED"],
+      default: "DRAFT",
+    },
     tags: [{ type: String, trim: true }],
   },
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }

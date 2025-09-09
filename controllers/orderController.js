@@ -24,7 +24,6 @@ const placeOrder = async (req, res) => {
   try {
     const userId = req.ID;
     const { buyNow, productId, variant, quantity, shippingAddress, paymentMethod } = req.body;
-    console.log('paymentMethod',paymentMethod)
 
     let items = [];
     let totalAmount = 0;
@@ -32,32 +31,87 @@ const placeOrder = async (req, res) => {
 
     if (buyNow) {
       const product = await Product.findById(productId);
+      if (!product) return res.status(404).json({ message: "Product not found" });
+
       const price = Number(variant?.price) || 0;
-      const mrp = Number(variant?.mrp) || price; // fallback
+      const mrp = Number(variant?.mrp) || price;
       const qty = Number(quantity) || 1;
+
+      // ✅ Jewellery: decrease from product.quantity
+      if (product.productType === "Jewellery") {
+        if (product.quantity < qty) {
+          return res.status(400).json({ message: "Insufficient stock" });
+        }
+        product.quantity -= qty;
+      }
+
+      // ✅ Cloths: decrease from matching variant stock
+      if (product.productType === "Cloths") {
+        const variantToUpdate = product.variants.find(v => v.size === variant.size);
+        if (!variantToUpdate) {
+          return res.status(400).json({ message: "Variant not found" });
+        }
+        if (variantToUpdate.stock < qty) {
+          return res.status(400).json({ message: `Only ${variantToUpdate.stock} left for size ${variant.size}` });
+        }
+        variantToUpdate.stock -= qty;
+      }
+
+      await product.save();
+
       const subtotal = price * qty;
-      
-       totalItems = qty;
-       totalMrp = mrp * qty; // <-- THIS LINE
-      //  totalDiscount = (mrp - price) * qty;
+      totalMrp = mrp * qty;
       totalAmount = subtotal;
 
       items.push({
         product: product._id,
         variant,
         quantity: qty,
-        subtotal: totalAmount,
+        subtotal,
       });
+
     } else {
       const cart = await Cart.findOne({ user: userId }).populate("items.product");
-      if (!cart || cart.items.length === 0) return res.status(400).json({ message: "Cart is empty" });
+      if (!cart || cart.items.length === 0) {
+        return res.status(400).json({ message: "Cart is empty" });
+      }
 
-      items = cart.items.map((item) => ({
-        product: item.product._id,
-        variant: item.variant,
-        quantity: item.quantity,
-        subtotal: item.subtotal,
-      }));
+      items = [];
+
+      for (const item of cart.items) {
+        const product = item.product;
+        const qty = item.quantity;
+
+        // ✅ Jewellery stock check
+        if (product.productType === "Jewellery") {
+          if (product.quantity < qty) {
+            return res.status(400).json({ message: `${product.title} has only ${product.quantity} left` });
+          }
+          product.quantity -= qty;
+        }
+
+        // ✅ Cloths stock check
+        if (product.productType === "Cloths") {
+          const variantToUpdate = product.variants.find(v => v.size === item.variant.size);
+          if (!variantToUpdate) {
+            return res.status(400).json({ message: `Variant ${item.variant.size} not found for ${product.title}` });
+          }
+          if (variantToUpdate.stock < qty) {
+            return res.status(400).json({ message: `${product.title} (size ${item.variant.size}) has only ${variantToUpdate.stock} left` });
+          }
+          variantToUpdate.stock -= qty;
+        }
+
+        await product.save();
+
+        items.push({
+          product: product._id,
+          variant: item.variant,
+          quantity: qty,
+          subtotal: item.subtotal,
+        });
+      }
+
       totalAmount = cart.totalPrice;
 
       // Clear cart
@@ -89,17 +143,16 @@ const placeOrder = async (req, res) => {
 
     const order = await Order.create(orderData);
 
-    // If payment is online, create Razorpay order
+    // Online payment (Razorpay)
     if (paymentMethod === "ONLINE") {
       const razorpayOrder = await createRazorpayOrderInstance(grandTotal);
-      // Save razorpayOrderId to order for verification later
       order.payment.razorpayOrderId = razorpayOrder.id;
       await order.save();
 
       return res.json({ success: true, order, razorpayOrder });
     }
 
-    // COD order
+    // COD
     res.json({ success: true, order });
 
   } catch (error) {

@@ -1,6 +1,7 @@
-import Category from "../models/Category.js";
+const Category = require ("../models/Category.js");
+const { uploadFileToS3 } = require("../middlewares/file_handler");
 
-export const getCategories = async (req, res) => {
+ const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().populate("header");
     res.json(categories);
@@ -9,17 +10,42 @@ export const getCategories = async (req, res) => {
   }
 };
 
-export const createCategory = async (req, res) => {
+const createCategory = async (req, res) => {
   try {
-    const category = await Category.create(req.body);
+    let imageUrl = "";
+     if (req.file) {
+              imageUrl = await uploadFileToS3(req.file, "category");
+            } else {
+              return res.status(400).json({ error: "Image is required" });
+            }
+    const category = await Category.create({
+      ...req.body,
+      image: imageUrl,
+    });
     res.status(201).json(category);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
-export const updateCategory = async (req, res) => {
+
+ const updateCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true });      
+     let imageUrl = "";
+
+    if (req.file) {
+      imageUrl = await uploadFileToS3(req.file, "category");
+    }
+    
+    const updateData ={
+      ...req.body,
+       image: imageUrl,
+    }
+
+    const category = await Category.findByIdAndUpdate(
+      req.params.id, 
+      updateData, 
+    { new: true }
+    );      
     if (!category) return res.status(404).json({ message: "Category not found" });      
     res.json(category);
   } catch (err) {
@@ -27,7 +53,7 @@ export const updateCategory = async (req, res) => {
   } 
 };
 
-export const deleteCategory = async (req, res) => {
+ const deleteCategory = async (req, res) => {
   try {
     const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) return res.status(404).json({ message: "Category not found" });
@@ -35,4 +61,12 @@ export const deleteCategory = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+
+module.exports = {
+getCategories,
+createCategory,
+updateCategory,
+deleteCategory,
 };

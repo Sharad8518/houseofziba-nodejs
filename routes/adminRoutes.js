@@ -6,6 +6,8 @@ const {
 } = require("../controllers/adminControllers");
 const {
   addProduct,
+  editProduct,
+  updateProductMedia,
   getProducts,
   getProductById,
   addfbtoProduct,
@@ -98,17 +100,19 @@ router.post("/logout", logoutAdmin);
 router.post("/logoutAll", logoutAllDevices);
 router.use(verifyJWT("admin"));
 router.post("/products", upload.array("images", 6), addProduct);
+router.put("/products/:id", editProduct);
+router.put("/products/:id/media", upload.array("file", 6), updateProductMedia);
 router.get("/products", getProducts);
 router.get("/products/:id", getProductById);
 router.get("/headers", getHeaders);
 router.get("/headers/category", getHeadersAllowCategory);
 router.get("/headers/:id", getHeader);
-router.post("/headers",upload.single("image"), createHeader);
-router.put("/headers/:id",upload.single("image"), updateHeader);
+router.post("/headers", createHeader);
+router.put("/headers/:id", updateHeader);
 router.delete("/headers/:id", deleteHeader);
 router.get("/categorys", getCategories);
-router.post("/categorys", createCategory);
-router.put("/categorys/:id", updateCategory);
+router.post("/categorys",upload.single("image"), createCategory);
+router.put("/categorys/:id",upload.single("image"), updateCategory);
 router.delete("/categorys/:id", deleteCategory);
 router.get("/categorys", getCategories);
 router.post("/categorys", createCategory);

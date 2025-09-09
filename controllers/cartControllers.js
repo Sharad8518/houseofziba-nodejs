@@ -92,56 +92,41 @@ const addToCart = async (req, res) => {
 
 const increaseQty = async (req, res) => {
   try {
-    const { productId, sku, attributes = [] } = req.body; // use SKU or attributes to identify variant
+    const { productId, sku, size } = req.body; // sku or size for Cloths
     const cart = await Cart.findOne({ user: req.ID });
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     // Find cart item
     const item = cart.items.find(
-      (i) =>
-        i.product.toString() === productId &&
-        (i.variant.sku === sku ||
-          (attributes.length > 0 &&
-            attributes.every((attr) =>
-              i.variant.attributes.some(
-                (a) => a.name === attr.name && a.value === attr.value
-              )
-            )))
+      (i) => i.product.toString() === productId && (i.variant.sku === sku || i.variant.size === size)
     );
-
     if (!item) return res.status(404).json({ message: "Item not in cart" });
 
-    // Get product and variant to check stock
+    // Get product
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    let variant;
-    if (product.variants && product.variants.length > 0) {
-      variant = product.variants.find(
-        (v) =>
-          v.sku === sku ||
-          attributes.every((attr) =>
-            v.attributes.some(
-              (a) => a.name === attr.name && a.value === attr.value
-            )
-          )
-      );
-      if (!variant) return res.status(400).json({ message: "Invalid variant" });
-    } else {
-      variant = {
-        stock:
-          product.inventoryBySize?.get(
-            attributes.find((a) => a.name === "Size")?.value
-          ) || 0,
-      };
+    // ✅ Jewellery stock check
+    if (product.productType === "Jewellery") {
+      if (item.quantity + 1 > product.quantity) {
+        return res.status(400).json({ message: "Not enough stock" });
+      }
     }
 
-    // Check stock
-    if (item.quantity + 1 > (variant.stock || 0)) {
-      return res.status(400).json({ message: "Not enough stock" });
+    // ✅ Cloths stock check (variant-based)
+    if (product.productType === "Cloths") {
+      const variant = product.variants.find((v) => v.sku === sku || v.size === size);
+      if (!variant) {
+        return res.status(400).json({ message: "Variant not found" });
+      }
+      if (item.quantity + 1 > variant.stock) {
+        return res
+          .status(400)
+          .json({ message: `Only ${variant.stock} left for size ${variant.size}` });
+      }
     }
 
-    // Increase quantity and recalc subtotal
+    // ✅ Increase quantity and recalc subtotal
     item.quantity += 1;
     item.subtotal = item.quantity * item.variant.price;
 
@@ -153,33 +138,46 @@ const increaseQty = async (req, res) => {
   }
 };
 
+
 const decreaseQty = async (req, res) => {
   try {
-    const { productId, sku, attributes = [] } = req.body; // identify variant
+    const { productId, sku, size } = req.body; // sku or size for Cloths
     const cart = await Cart.findOne({ user: req.ID });
     if (!cart) return res.status(404).json({ message: "Cart not found" });
 
     // Find cart item
     const item = cart.items.find(
-      (i) =>
-        i.product.toString() === productId &&
-        (i.variant.sku === sku ||
-          (attributes.length > 0 &&
-            attributes.every((attr) =>
-              i.variant.attributes.some(
-                (a) => a.name === attr.name && a.value === attr.value
-              )
-            )))
+      (i) => i.product.toString() === productId && (i.variant.sku === sku || i.variant.size === size)
     );
-
     if (!item) return res.status(404).json({ message: "Item not in cart" });
 
-    if (item.quantity > 1) {
-      item.quantity -= 1;
-      item.subtotal = item.quantity * item.variant.price;
-    } else {
-      // Remove item if quantity goes below 1
-      cart.items = cart.items.filter((i) => i !== item);
+    // Get product
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    // ✅ Jewellery logic
+    if (product.productType === "Jewellery") {
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+        item.subtotal = item.quantity * item.variant.price;
+      } else {
+        cart.items = cart.items.filter((i) => i !== item);
+      }
+    }
+
+    // ✅ Cloths logic
+    if (product.productType === "Cloths") {
+      const variant = product.variants.find((v) => v.sku === sku || v.size === size);
+      if (!variant) {
+        return res.status(400).json({ message: "Variant not found" });
+      }
+
+      if (item.quantity > 1) {
+        item.quantity -= 1;
+        item.subtotal = item.quantity * item.variant.price;
+      } else {
+        cart.items = cart.items.filter((i) => i !== item);
+      }
     }
 
     await cart.save();
@@ -189,6 +187,7 @@ const decreaseQty = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 const removeFromCart = async (req, res) => {
   try {
