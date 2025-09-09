@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const Order = require("../models/Order")
 const { uploadFilesToS3,uploadFileToS3 ,deleteFileFromS3 } = require("../middlewares/file_handler");
 
 /* ---------------- Add Product ---------------- */
@@ -799,6 +800,69 @@ const addOrUpdateReview = async (req, res) => {
   }
 };
 
+// --- Get total stock across all products
+const totalStock = async (req, res) => {
+  try {
+    const products = await Product.find();
+
+    let totalStock = 0;
+
+    products.forEach((product) => {
+      if (product.variants && product.variants.length > 0) {
+        totalStock += product.variants.reduce(
+          (sum, v) => sum + (v.stock || 0),
+          0
+        );
+      } else {
+        totalStock += product.quantity || 0;
+      }
+    });
+
+    res.json({ totalStock });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+const Stock = async (req, res) => {
+  try {
+    const products = await Product.find().lean();
+
+    // --- Calculate total stock in DB
+    let totalStock = 0;
+    products.forEach((p) => {
+      if (p.variants && p.variants.length > 0) {
+        totalStock += p.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+      } else {
+        totalStock += p.quantity || 0;
+      }
+    });
+
+    // --- Get sold stock from delivered orders
+    const soldStock = await Order.aggregate([
+      { $match: { orderStatus: "delivered" } },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: null,
+          totalSold: { $sum: "$items.quantity" },
+        },
+      },
+    ]);
+
+    const totalSold = soldStock.length ? soldStock[0].totalSold : 0;
+    const remainingStock = totalStock - totalSold;
+
+    res.json({
+      totalStock,
+      totalSold,
+      remainingStock: remainingStock < 0 ? 0 : remainingStock,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   addProduct, 
   editProduct,
@@ -811,5 +875,7 @@ module.exports = {
   addFrequentlyBoughtTogether,
   getCurrentMonthProducts,
   addOrUpdateReview,
-  updateProductMedia
+  updateProductMedia,
+  totalStock,
+  Stock
 };

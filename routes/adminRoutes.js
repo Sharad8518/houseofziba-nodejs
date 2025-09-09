@@ -13,6 +13,8 @@ const {
   addfbtoProduct,
   removefbtFromProduct,
   addSimilarProduct,
+  totalStock,
+  Stock
 } = require("../controllers/productContrrollers");
 const {
   addNavbarItem,
@@ -64,6 +66,10 @@ const {
 const {
   getAllOrder,
   updateOrderStatus,
+  currentMonthSale,
+  stockSold,
+  pieChart,
+  lineChart,
 } = require("../controllers/orderController.js");
 
 const {
@@ -151,5 +157,11 @@ router.post("/policy",addPolicy)
 router.get("/policy",getPolicies)
 router.put("/policy/:id",updatePolicy)
 router.delete("/policy/:id",deletePolicy)
+router.get("/sales/monthly",currentMonthSale)
+router.get("/total/stock",totalStock)
+router.get("/sales/stock",stockSold)
+router.get("/stock",Stock)
+router.get("/pieChart",pieChart)
+router.get("/lineChart",lineChart)
 
 module.exports = router;

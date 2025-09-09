@@ -305,10 +305,177 @@ const getAllOrder = async (req, res) => {
 };
 
 
+ const currentMonthSale = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const result = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: "delivered",
+          placedAt: { $gte: startOfMonth, $lt: endOfMonth },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$totalAmount" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.json({
+      month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+      totalSales: result.length ? result[0].totalSales : 0,
+      totalOrders: result.length ? result[0].totalOrders : 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// --- Get total stock sold (delivered orders only)
+const stockSold = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const result = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: "delivered",
+          placedAt: { $gte: startOfMonth, $lt: endOfMonth },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: null,
+          totalStockSold: { $sum: "$items.quantity" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.json({
+      month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+      totalStockSold: result.length ? result[0].totalStockSold : 0,
+      totalOrders: result.length ? result[0].totalOrders : 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+const pieChart = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+
+    const result = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: "delivered",
+          placedAt: { $gte: startOfYear, $lt: endOfYear },
+        },
+      },
+      {
+        $group: {
+          _id: { month: { $month: "$placedAt" } },
+          totalSales: { $sum: "$totalAmount" },
+          totalDiscount: { $sum: "$totalDiscount" },
+        },
+      },
+      { $sort: { "_id.month": 1 } },
+    ]);
+
+    // Map month numbers → names
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    // Build chart data
+    const chartData = result.map((r) => {
+      const netRevenue = r.totalSales - r.totalDiscount;
+      return {
+        name: monthNames[r._id.month - 1],
+        totalSales: r.totalSales,
+        discount: r.totalDiscount,
+        netRevenue: netRevenue < 0 ? 0 : netRevenue,
+        value: netRevenue < 0 ? 0 : netRevenue, // for PieChart `dataKey="value"`
+      };
+    });
+
+    res.json({
+      year: now.getFullYear(),
+      chartData,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+const lineChart = async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const result = await Order.aggregate([
+      {
+        $match: {
+          orderStatus: "delivered",
+          placedAt: { $gte: startOfMonth, $lt: endOfMonth },
+        },
+      },
+      {
+        $group: {
+          _id: { day: { $dayOfMonth: "$placedAt" } },
+          totalSales: { $sum: "$totalAmount" },
+          totalDiscount: { $sum: "$totalDiscount" },
+        },
+      },
+      { $sort: { "_id.day": 1 } },
+    ]);
+
+    // Build data for LineChart
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const chartData = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const found = result.find((r) => r._id.day === day);
+      chartData.push({
+        day,
+        totalSales: found ? found.totalSales : 0,
+        discount: found ? found.totalDiscount : 0,
+        netRevenue: found ? Math.max(found.totalSales - found.totalDiscount, 0) : 0,
+      });
+    }
+
+    res.json({
+      month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+      chartData,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   placeOrder,
   updateOrderStatus,
   verifyRazorpayPayment,
   getUserOrder,
-  getAllOrder
+  getAllOrder,
+  currentMonthSale,
+  stockSold,
+  pieChart,
+  lineChart
 };

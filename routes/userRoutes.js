@@ -107,6 +107,6 @@ router.post("/favorites",addFavorite)
 router.get("/favorites",getFavorites) 
 router.delete("/favorites/:id",removeFavorite) 
 router.get("/order",getUserOrder)
-router.post("/:productId/review", upload.single("file"), addOrUpdateReview); 
+router.post("/products/:productId/review", upload.single("file"), addOrUpdateReview); 
 
 module.exports = router;
