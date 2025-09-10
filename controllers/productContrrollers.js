@@ -970,7 +970,8 @@ const addOrUpdateReview = async (req, res) => {
         10
       : 0;
 
-    await product.save();
+    // ✅ Save only modified fields (skip validation on unrelated fields)
+    await product.save({ validateModifiedOnly: true });
 
     res.json({
       success: true,
@@ -982,6 +983,7 @@ const addOrUpdateReview = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // --- Get total stock across all products
 const totalStock = async (req, res) => {
