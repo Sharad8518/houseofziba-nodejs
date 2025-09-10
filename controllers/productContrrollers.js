@@ -1,6 +1,10 @@
 const Product = require("../models/Product");
-const Order = require("../models/Order")
-const { uploadFilesToS3,uploadFileToS3 ,deleteFileFromS3 } = require("../middlewares/file_handler");
+const Order = require("../models/Order");
+const {
+  uploadFilesToS3,
+  uploadFileToS3,
+  deleteFileFromS3,
+} = require("../middlewares/file_handler");
 
 /* ---------------- Add Product ---------------- */
 const addProduct = async (req, res) => {
@@ -33,22 +37,28 @@ const addProduct = async (req, res) => {
       }
     };
 
-    ["variants", "seo", "faq", "productionDetail", "dupatta","shippingAndReturns"].forEach(
-      parseIfString
-    );
+    [
+      "variants",
+      "seo",
+      "faq",
+      "productionDetail",
+      "dupatta",
+      "shippingAndReturns",
+    ].forEach(parseIfString);
 
-       ["categories", "subCategories", "collections"].forEach((field) => {
+    ["categories", "subCategories", "collections"].forEach((field) => {
       if (productData[field] && Array.isArray(productData[field])) {
-        productData[field] = productData[field].map((val) => {
-          try {
-            return typeof val === "string" ? JSON.parse(val) : val;
-          } catch (err) {
-            return val;
-          }
-        }).flat();
+        productData[field] = productData[field]
+          .map((val) => {
+            try {
+              return typeof val === "string" ? JSON.parse(val) : val;
+            } catch (err) {
+              return val;
+            }
+          })
+          .flat();
       }
     });
-
 
     // Ensure numeric values are parsed
     if (productData.discountValue)
@@ -114,7 +124,8 @@ const editProduct = async (req, res) => {
       }));
 
       const existingProduct = await Product.findById(productId);
-      if (!existingProduct) return res.status(404).json({ message: "Product not found" });
+      if (!existingProduct)
+        return res.status(404).json({ message: "Product not found" });
 
       updateData.media = [...(existingProduct.media || []), ...newMedia];
     }
@@ -161,7 +172,8 @@ const editProduct = async (req, res) => {
     // ------------------------------
     // 4️⃣ Numeric fields
     // ------------------------------
-    if (updateData.discountValue) updateData.discountValue = Number(updateData.discountValue);
+    if (updateData.discountValue)
+      updateData.discountValue = Number(updateData.discountValue);
     if (updateData.price) updateData.price = Number(updateData.price);
 
     // ------------------------------
@@ -187,7 +199,6 @@ const editProduct = async (req, res) => {
     });
   }
 };
-
 
 const updateProductMedia = async (req, res) => {
   try {
@@ -687,6 +698,8 @@ const productfilter = async (req, res) => {
       fabric,
       work, // craft
       collections, // occasion
+      dupatta,
+      occasion,
       minDiscount,
       sortBy,
     } = req.query;
@@ -741,9 +754,13 @@ const productfilter = async (req, res) => {
 
     // 📂 SubCategory filter
     if (subCategories) {
-      const subs = Array.isArray(subCategories) ? subCategories : [subCategories];
+      const subs = Array.isArray(subCategories)
+        ? subCategories
+        : [subCategories];
       orConditions.push({
-        subCategories: { $elemMatch: { $regex: subs.join("|"), $options: "i" } },
+        subCategories: {
+          $elemMatch: { $regex: subs.join("|"), $options: "i" },
+        },
       });
     }
 
@@ -754,14 +771,24 @@ const productfilter = async (req, res) => {
 
     // 🧵 Fabric filter
     if (fabric) {
-      const fabrics = Array.isArray(fabric) ? fabric : [fabric];
-      orConditions.push({ fabric: { $in: fabrics } });
+      const fabrics = Array.isArray(fabric) ? fabric : fabric.split(",");
+      orConditions.push({
+        fabric: { $in: fabrics.map((o) => new RegExp(o, "i")) },
+      });
     }
 
-    // 🎨 Work/Craft filter
     if (work) {
-      const works = Array.isArray(work) ? work : [work];
-      orConditions.push({ work: { $in: works } });
+      const works = Array.isArray(work) ? work : work.split(",");
+      orConditions.push({
+        work: { $in: works.map((o) => new RegExp(o, "i")) },
+      });
+    }
+
+    if (occasion) {
+      const occ = Array.isArray(occasion) ? occasion : occasion.split(",");
+      orConditions.push({
+        occasion: { $in: occ.map((o) => new RegExp(o, "i")) },
+      });
     }
 
     // 🎉 Occasion filter
@@ -772,8 +799,14 @@ const productfilter = async (req, res) => {
       });
     }
 
+    if (dupatta === "true") {
+      orConditions.push({ "dupatta.enabled": true });
+    } else if (dupatta === "false") {
+      orConditions.push({ "dupatta.enabled": false });
+    }
+
     // 🔖 Discount filter
-    if (minDiscount) {
+    if (minDiscount !== undefined && !isNaN(Number(minDiscount))) {
       orConditions.push({ discountValue: { $gte: Number(minDiscount) } });
     }
 
@@ -820,7 +853,6 @@ const productfilter = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 const getCurrentMonthProducts = async (req, res) => {
   try {
@@ -870,7 +902,7 @@ const getCurrentMonthProducts = async (req, res) => {
 const addOrUpdateReview = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { rating, title, comment,userName } = req.body;
+    const { rating, title, comment, userName } = req.body;
 
     if (!rating) {
       return res
@@ -885,7 +917,7 @@ const addOrUpdateReview = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
 
-    const userId = req.ID;       // ✅ from protect middleware
+    const userId = req.ID; // ✅ from protect middleware
 
     let media = null;
 
@@ -934,7 +966,8 @@ const addOrUpdateReview = async (req, res) => {
     // --- Update average rating
     const ratings = product.reviews.map((r) => r.rating);
     product.averageRating = ratings.length
-      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) /
+        10
       : 0;
 
     await product.save();
@@ -972,7 +1005,7 @@ const totalStock = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
+};
 
 const Stock = async (req, res) => {
   try {
@@ -1014,7 +1047,7 @@ const Stock = async (req, res) => {
 };
 
 module.exports = {
-  addProduct, 
+  addProduct,
   editProduct,
   getProducts,
   getProductById,
@@ -1027,5 +1060,5 @@ module.exports = {
   addOrUpdateReview,
   updateProductMedia,
   totalStock,
-  Stock
+  Stock,
 };
