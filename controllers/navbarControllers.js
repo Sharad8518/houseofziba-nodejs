@@ -17,6 +17,7 @@ const getNavbarData = async (req, res) => {
             return {
               _id: cat._id,
               name: cat.name,
+              image:cat.image,
               slug: cat.slug,
               subCategories: subCategories.map((sub) => ({
                 _id: sub._id,
