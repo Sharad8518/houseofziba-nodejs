@@ -263,13 +263,16 @@ const getProducts = async (req, res) => {
       title,
       itemNumber,
       status,
+      header,
+      collections,
     } = req.query;
+
     const pageNumber = Math.max(Number(page), 1);
     const pageSize = Math.max(Number(limit), 1);
 
     let filter = {};
 
-    // 🔎 Global Search (title, description, etc. with $text index)
+    // 🔎 Global Search (title, description, header, etc. with $text index)
     if (search && search.trim() !== "") {
       filter.$text = { $search: search };
     }
@@ -279,12 +282,29 @@ const getProducts = async (req, res) => {
       filter.title = { $regex: title, $options: "i" };
     }
 
+    // 🔎 Header filter (partial match, case insensitive)
+    if (header) {
+      filter.header = { $regex: header, $options: "i" };
+    }
+
+    // 🔎 Collections filter (partial match, case insensitive)
+    if (collections) {
+      const collectionArray = collections.split(",").map((c) => c.trim());
+
+      // Match inside the stringified array
+      filter.collections = {
+        $elemMatch: {
+          $regex: collectionArray.join("|"), // OR regex for multiple
+          $options: "i",
+        },
+      };
+    }
     // 🔎 Item number filter (exact match)
     if (itemNumber) {
       filter.itemNumber = itemNumber;
     }
 
-    // 🔎 Status filter (exact match, e.g. active/inactive)
+    // 🔎 Status filter (exact match, e.g. DRAFT/ACTIVE/ARCHIVED)
     if (status) {
       filter.status = status;
     }
@@ -292,7 +312,7 @@ const getProducts = async (req, res) => {
     const products = await Product.find(filter)
       .skip((pageNumber - 1) * pageSize)
       .limit(pageSize)
-      .sort({ createdAt: -1 }); // optional: latest first
+      .sort({ createdAt: -1 });
 
     const total = await Product.countDocuments(filter);
 
@@ -309,6 +329,7 @@ const getProducts = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 /* ---------------- Get Single Product ---------------- */
 const getProductById = async (req, res) => {
   try {
@@ -321,7 +342,8 @@ const getProductById = async (req, res) => {
       })
       .populate({
         path: "frequentlyBoughtTogether",
-        select: "title description images price status",
+        select:
+          "title description media quantity salePrice mrp discountValue discountType status",
       });
 
     if (!product) {
@@ -983,7 +1005,6 @@ const addOrUpdateReview = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 // --- Get total stock across all products
 const totalStock = async (req, res) => {
